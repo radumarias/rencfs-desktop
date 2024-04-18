@@ -1,0 +1,31 @@
+[package]
+name = "encrypted_fs_desktop_gui"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+encrypted_fs_desktop_common = { path = "../encrypted_fs_desktop_common" }
+
+diesel = { workspace = true }
+diesel_migrations = { workspace = true }
+dotenvy = { workspace = true }
+tonic = { workspace = true }
+prost = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+directories = { workspace = true }
+static_init = { workspace = true }
+thiserror = { workspace = true }
+
+eframe = "0.27.2"
+egui = "0.27.2"
+once_cell = "1.19.0"
+
+rfd = "0.14.1"
+egui-notify = "0.14.0"
+
+[build-dependencies]
+tonic-build = { workspace = true }

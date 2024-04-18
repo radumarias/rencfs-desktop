@@ -1,0 +1,16 @@
+syntax = "proto3";
+package encrypted_fs_desktop;
+
+service VaultService {
+  rpc Lock (IdRequest) returns (EmptyReply);
+  rpc Unlock (IdRequest) returns (EmptyReply);
+  rpc ChangeMountPoint (IdRequest) returns (EmptyReply);
+  rpc ChangeDataDir (IdRequest) returns (EmptyReply);
+}
+
+message IdRequest {
+  uint32 id = 1;
+}
+
+message EmptyReply {
+}
