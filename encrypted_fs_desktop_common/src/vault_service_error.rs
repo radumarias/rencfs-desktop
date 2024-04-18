@@ -1,4 +1,3 @@
-use std::convert::Infallible;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tonic::Status;
