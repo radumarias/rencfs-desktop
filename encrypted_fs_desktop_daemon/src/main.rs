@@ -13,8 +13,8 @@ use tokio::sync::Mutex;
 use tokio::task;
 use tonic::transport::Server;
 use tracing::{error, info};
+use encrypted_fs_desktop_common::{get_data_dir, get_logs_dir};
 
-use encrypted_fs_desktop_common::get_project_dirs;
 use encrypted_fs_desktop_common::persistence::run_migrations;
 
 use crate::vault_service::MyVaultService;
@@ -38,8 +38,7 @@ async fn main() {
 }
 
 fn daemonize() {
-    let data_dir = get_project_dirs().data_local_dir().to_path_buf();
-    let logs_dir = data_dir.join("logs");
+    let logs_dir = get_logs_dir();
     let uid = unsafe { libc::getuid() };
     let gid = unsafe { libc::getgid() };
     let username = whoami::username();
@@ -50,7 +49,7 @@ fn daemonize() {
     let daemonize = Daemonize::new()
         // .pid_file("/tmp/test.pid") // Every method except `new` and `start`
         // .chown_pid_file(true)      // is optional, see `Daemonize` documentation
-        .working_directory(data_dir.clone()) // for default behaviour.
+        .working_directory(get_data_dir()) // for default behaviour.
         .user(username.as_str())
         // .group("gnome") // Group name
         .group(gid)        // or group id.

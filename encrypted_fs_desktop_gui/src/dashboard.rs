@@ -69,9 +69,7 @@ impl ItemTrait for Item {
                         format!("🔓 {}", self.name)
                     }).size(20.0).strong());
                 });
-                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    ui.label(format!("ID {}", self.id));
-                });
+                ui.with_layout(Layout::right_to_left(Align::Center), |_ui| {});
             });
         });
 

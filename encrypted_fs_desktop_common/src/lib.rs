@@ -1,5 +1,6 @@
 use std::{fs, panic};
 use std::panic::UnwindSafe;
+use std::path::PathBuf;
 use std::str::FromStr;
 
 use diesel_migrations::{embed_migrations, EmbeddedMigrations};
@@ -34,9 +35,7 @@ pub fn log_init(level: &str, prefix: &str) -> WorkerGuard {
         guard
     } else {
         // for prod mode print to file
-        let logs_path = get_project_dirs().data_local_dir().join("logs");
-
-        let file_appender = tracing_appender::rolling::daily(logs_path.to_str().unwrap(), format!("{}.log", prefix));
+        let file_appender = tracing_appender::rolling::daily(get_logs_dir().to_str().unwrap(), format!("{}.log", prefix));
         let (file_writer, guard) = tracing_appender::non_blocking(file_appender);
         tracing_subscriber::fmt()
             .with_writer(file_writer)
@@ -57,7 +56,7 @@ pub async fn execute_catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) {
     }
 }
 
-pub fn get_project_dirs() -> ProjectDirs {
+fn get_project_dirs() -> ProjectDirs {
     let proj_dirs = if let Some(proj_dirs) = ProjectDirs::from(QUALIFIER, ORGANIZATION, APPLICATION) {
         proj_dirs
     } else {
@@ -69,4 +68,34 @@ pub fn get_project_dirs() -> ProjectDirs {
     fs::create_dir_all(proj_dirs.data_local_dir().join("logs")).expect("Cannot create logs directory");
 
     proj_dirs
+}
+
+pub fn get_config_dir() -> PathBuf {
+    if *DEVMODE {
+        get_dev_data_dir()
+    } else {
+        get_project_dirs().config_local_dir().to_path_buf()
+    }
+}
+
+pub fn get_data_dir() -> PathBuf {
+    if *DEVMODE {
+        get_dev_data_dir()
+    } else {
+        get_project_dirs().data_local_dir().to_path_buf()
+    }
+}
+
+pub fn get_logs_dir() -> PathBuf {
+    if *DEVMODE {
+        get_dev_data_dir()
+    } else {
+        get_project_dirs().data_local_dir().to_path_buf()
+    }
+}
+
+fn get_dev_data_dir() -> PathBuf {
+    let path = PathBuf::from_str(&format!("/tmp/{}", APPLICATION.replace(" ", "-").to_lowercase())).unwrap();
+    fs::create_dir_all(&path).expect("Cannot create config directory");
+    path
 }

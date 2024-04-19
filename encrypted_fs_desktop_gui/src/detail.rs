@@ -1,35 +1,28 @@
-mod daemon_service;
-mod persistence_service;
-
 use std::{fs, sync};
 use std::sync::mpsc::Sender;
 use std::time::Duration;
 use sync::mpsc::Receiver;
-use diesel::{AsChangeset, ExpressionMethods, QueryResult};
-use diesel::query_builder::QueryFragment;
+
+use diesel::{ExpressionMethods, QueryResult};
 use diesel::result::DatabaseErrorKind::UniqueViolation;
 use diesel::result::Error::DatabaseError;
-use diesel::sqlite::Sqlite;
-
 use eframe::{egui, Frame};
 use eframe::egui::Context;
 use egui::{Button, ecolor, Widget};
-use encrypted_fs_desktop_common::dao::VaultDao;
-use encrypted_fs_desktop_common::models::NewVault;
 use egui_notify::{Toast, Toasts};
-use tonic::{Response, Status};
-use tonic::transport::Channel;
-use tracing::{debug, error};
-use daemon_service::DaemonService;
-use encrypted_fs_desktop_common::schema::vaults::dsl::vaults;
-use encrypted_fs_desktop_common::schema::vaults::{data_dir, mount_point, name};
-use encrypted_fs_desktop_common::vault_service_error::{VaultServiceError};
 
-use crate::daemon_service::vault_service_client::VaultServiceClient;
+use daemon_service::DaemonService;
+use encrypted_fs_desktop_common::models::NewVault;
+use encrypted_fs_desktop_common::schema::vaults::{data_dir, mount_point, name};
+use encrypted_fs_desktop_common::vault_service_error::VaultServiceError;
+
+use crate::daemon_service::EmptyReply;
 use crate::dashboard::{Item, UiReply};
-use crate::{DB_CONN, DEVMODE, RT};
-use crate::daemon_service::{EmptyReply, IdRequest, StringIdRequest};
-use crate::detail::persistence_service::DbService;
+use crate::detail::db_service::DbService;
+use crate::DEVMODE;
+
+mod daemon_service;
+mod db_service;
 
 enum ServiceReply {
     UnlockVaultReply(EmptyReply),
@@ -99,18 +92,24 @@ impl eframe::App for ViewGroupDetail {
                 ui.label("Vault Detail");
                 ui.separator();
                 if self.id.is_some() {
-                    if Button::new(if self.locked { "Unlock vault" } else { "Lock vault" })
-                        .fill(if self.locked { ecolor::Color32::DARK_GRAY } else { ecolor::Color32::DARK_GREEN })
-                        .ui(ui).on_hover_ui(|ui| {
-                        ui.label(if self.locked { "Unlock the vault" } else { "Lock the vault" });
-                    }).clicked() {
-                        if self.locked {
-                            self.daemon_service.unlock_vault();
-                            customize_toast_duration(self.toasts.warning("please wait, it takes up to 10 seconds to unlock the vault, you will be notified"), 10)
-                        } else {
-                            self.daemon_service.lock_vault();
-                        }
-                    }
+                    ui.horizontal(|ui| {
+                        ui.set_max_width(80.0);
+                        ui.vertical_centered(|ui| {
+                            if Button::new(if self.locked { "Unlock vault" } else { "Lock vault" })
+                                .fill(if self.locked { ecolor::Color32::DARK_GRAY } else { ecolor::Color32::DARK_GREEN })
+                                .min_size(egui::vec2(80.0, 30.0))
+                                .ui(ui).on_hover_ui(|ui| {
+                                ui.label(if self.locked { "Unlock the vault" } else { "Lock the vault" });
+                            }).clicked() {
+                                if self.locked {
+                                    self.daemon_service.unlock_vault();
+                                    customize_toast_duration(self.toasts.warning("please wait, it takes up to 10 seconds to unlock the vault, you will be notified"), 8);
+                                } else {
+                                    self.daemon_service.lock_vault();
+                                }
+                            }
+                        });
+                    });
                 }
                 ui.horizontal(|ui| {
                     ui.label("Name");
@@ -123,28 +122,32 @@ impl eframe::App for ViewGroupDetail {
                     ui.push_id(1000, |ui| {
                         egui::ScrollArea::horizontal().
                             max_width(400.0).show(ui, |ui| {
-                            if let Some(picked_path) = &self.mount_point {
+                            if let Some(path) = &self.mount_point {
                                 ui.horizontal(|ui| {
-                                    ui.monospace(picked_path);
+                                    ui.monospace(path);
                                 });
                             }
                         });
                     });
                     if ui.button("...").clicked() {
                         if let Some(path) = rfd::FileDialog::new().pick_folder() {
-                            if path.to_string_lossy() == self.mount_point.as_ref().unwrap().as_str() {
+                            if self.id.is_some() && path.to_string_lossy() == self.mount_point.as_ref().unwrap().as_str() {
                                 customize_toast(self.toasts.error("you need to select a different path than existing one"));
                             } else {
                                 if fs::read_dir(path.clone()).unwrap().count() > 0 {
                                     customize_toast(self.toasts.error("mount point must be empty"));
                                 } else {
-                                    if !self.locked {
-                                        customize_toast_duration(self.toasts.warning("please wait, it takes up to 10 seconds to change mount point, you will be notified"), 10)
+                                    let path = path.display().to_string();
+                                    if self.id.is_some() {
+                                        if !self.locked {
+                                            customize_toast_duration(self.toasts.warning("please wait, it takes up to 10 seconds to change mount point, you will be notified"), 8);
+                                            customize_toast_duration(self.toasts.warning("it will lock the vault meanwhile"), 8)
+                                        }
+                                        let old_path = self.mount_point.as_ref().unwrap().clone();
+                                        self.db_service.update(mount_point.eq(path.clone()));
+                                        self.daemon_service.change_mount_point(old_path);
                                     }
-                                    let old_mount_point = self.mount_point.as_ref().unwrap().clone();
-                                    self.mount_point = Some(path.display().to_string());
-                                    self.db_service.update(mount_point.eq(self.mount_point.as_ref().unwrap().clone()));
-                                    self.daemon_service.change_mount_point(old_mount_point);
+                                    self.mount_point = Some(path);
                                 }
                             }
                         }
@@ -155,25 +158,32 @@ impl eframe::App for ViewGroupDetail {
                     ui.push_id(1001, |ui| {
                         egui::ScrollArea::horizontal().
                             max_width(400.0).show(ui, |ui| {
-                            if let Some(picked_path) = &self.data_dir {
+                            if let Some(path) = &self.data_dir {
                                 ui.horizontal(|ui| {
-                                    ui.monospace(picked_path);
+                                    ui.monospace(path);
                                 });
                             }
                         });
                     });
                     if ui.button("...").clicked() {
                         if let Some(path) = rfd::FileDialog::new().pick_folder() {
-                            if !*DEVMODE && fs::read_dir(path.clone()).unwrap().count() > 0 {
-                                customize_toast(self.toasts.error("data dir must be empty"));
+                            if self.id.is_some() && path.to_string_lossy() == self.data_dir.as_ref().unwrap().as_str() {
+                                customize_toast(self.toasts.error("you need to select a different path than existing one"));
                             } else {
-                                if path.to_string_lossy() == self.data_dir.as_ref().unwrap().as_str() {
-                                    customize_toast(self.toasts.error("you need to select a different path than existing one"));
+                                if !*DEVMODE && fs::read_dir(path.clone()).unwrap().count() > 0 {
+                                    customize_toast(self.toasts.error("data dir must be empty"));
                                 } else {
-                                    let old_data_dir = self.data_dir.as_ref().unwrap().clone();
-                                    self.data_dir = Some(path.display().to_string());
-                                    self.db_service.update(data_dir.eq(self.data_dir.as_ref().unwrap().clone()));
-                                    self.daemon_service.change_data_dir(old_data_dir);
+                                    let path = path.display().to_string();
+                                    if self.id.is_some() {
+                                        if !self.locked {
+                                            customize_toast_duration(self.toasts.warning("it could take longer to move the data to the new location, you will be notified"), 8);
+                                            customize_toast_duration(self.toasts.warning("it will lock the vault meanwhile"), 8)
+                                        }
+                                        let old_path = self.data_dir.as_ref().unwrap().clone();
+                                        self.db_service.update(data_dir.eq(path.clone()));
+                                        self.daemon_service.change_data_dir(old_path);
+                                    }
+                                    self.data_dir = Some(path);
                                 }
                             }
                         }
@@ -217,11 +227,9 @@ impl eframe::App for ViewGroupDetail {
                     }
 
                     if self.id.is_some() {
-                        let mut button = Button::new(if !self.confirmation_delete_pending { "Delete" } else { "Confirm DELETE" });
-                        if self.confirmation_delete_pending {
-                            button = button.fill(ecolor::Color32::DARK_RED)
-                        }
-                        if button.ui(ui).on_hover_ui(|ui| {
+                        if Button::new(if !self.confirmation_delete_pending { "Delete" } else { "Confirm DELETE" })
+                            .fill(ecolor::Color32::DARK_RED)
+                            .ui(ui).on_hover_ui(|ui| {
                             ui.label("Delete vault");
                         }).clicked() {
                             if !self.confirmation_delete_pending {
@@ -290,7 +298,7 @@ impl ViewGroupDetail {
             rx_service,
             tx_parent: tx_parent.clone(),
             daemon_service: DaemonService::new(Some(item.id), tx_service.clone(), tx_parent.clone()),
-            db_service: DbService::new(None, tx_parent),
+            db_service: DbService::new(Some(item.id), tx_parent),
             toasts: Toasts::default(),
         }
     }
@@ -311,18 +319,12 @@ impl ViewGroupDetail {
         self.data_dir = Some(vault.data_dir);
         self.locked = vault.locked == 1;
         self.tx_parent.send(UiReply::VaultUpdated(false)).unwrap();
-
     }
 
     fn ui_on_name_lost_focus(&mut self) {
-        if let Some(id_v) = self.id {
-            let mut guard = DB_CONN.lock().unwrap();
-            let mut dao = VaultDao::new(&mut guard);
-            if dao.get(id_v).unwrap().name != self.name {
-                dao.update(id_v, name.eq(self.name.clone())).unwrap();
-                self.tx_parent.send(UiReply::VaultUpdated(true)).unwrap();
-                debug!("name updated");
-            }
+        if let Some(_) = self.id {
+            self.db_service.update(name.eq(self.name.clone()));
+            self.tx_parent.send(UiReply::VaultUpdated(true)).unwrap();
         }
     }
 }

@@ -3,7 +3,6 @@ use std::fs::OpenOptions;
 use std::sync::Arc;
 
 use diesel::{QueryResult, SqliteConnection};
-use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use sysinfo::{Pid, ProcessStatus, System};
 use thiserror::Error;
@@ -11,8 +10,8 @@ use tokio::process::{Child, Command};
 use tokio::sync::Mutex;
 use tracing::{error, info, warn};
 
-use crate::app_details::{APPLICATION, ORGANIZATION, QUALIFIER};
 use crate::dao::VaultDao;
+use crate::get_logs_dir;
 
 #[derive(Debug, Error, Serialize, Deserialize, Clone)]
 pub enum VaultHandlerError {
@@ -98,15 +97,10 @@ impl VaultHandler {
             return Ok(());
         }
 
-        let base_data_dir = if let Some(proj_dirs) = ProjectDirs::from(QUALIFIER, ORGANIZATION, APPLICATION) {
-            proj_dirs.data_local_dir().to_path_buf()
-        } else {
-            error!("Cannot get project directories");
-            panic!("Cannot get project directories");
-        };
         // create logs files
-        let stdout = OpenOptions::new().append(true).create(true).open(base_data_dir.join("logs").join(format!("vault_{}.out", self.id))).expect("Cannot create stdout file");
-        let stderr = OpenOptions::new().append(true).create(true).open(base_data_dir.join("logs").join(format!("vault_{}.err", self.id))).expect("Cannot create stderr file");
+        let logs_dir = get_logs_dir();
+        let stdout = OpenOptions::new().append(true).create(true).open(logs_dir.join(format!("vault_{}.out", self.id))).expect("Cannot create stdout file");
+        let stderr = OpenOptions::new().append(true).create(true).open(logs_dir.join(format!("vault_{}.err", self.id))).expect("Cannot create stderr file");
 
         let vault = {
             let mut guard = self.db_conn.lock().await;
@@ -222,7 +216,7 @@ impl VaultHandler {
                     Ok(vault) => vault.mount_point,
                     Err(err) => {
                         error!("Cannot get vault {}", err);
-                        return Err(VaultHandlerError::CannotLockVault.into());
+                        return Err(VaultHandlerError::CannotChangeDataDir.into());
                     }
                 }
             };

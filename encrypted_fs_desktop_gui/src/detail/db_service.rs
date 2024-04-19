@@ -40,8 +40,6 @@ impl DbService {
     }
 
     pub(super) fn insert(&mut self, new_vault: NewVault) -> QueryResult<()> {
-        use encrypted_fs_desktop_common::schema::vaults::*;
-
         let mut lock = DB_CONN.lock().unwrap();
         let mut dao = VaultDao::new(&mut lock);
         dao.insert(&new_vault)

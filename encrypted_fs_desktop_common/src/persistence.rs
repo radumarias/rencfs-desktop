@@ -6,14 +6,14 @@ use diesel::migration::MigrationVersion;
 use diesel_migrations::MigrationHarness;
 use tracing::info;
 
-use crate::{DEVMODE, get_project_dirs, MIGRATIONS};
+use crate::{DEVMODE, get_config_dir, MIGRATIONS};
 
 pub fn establish_connection() -> ConnectionResult<SqliteConnection> {
     let database_url: String;
     if *DEVMODE {
         database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     } else {
-        database_url = get_project_dirs().config_dir().join("encrypted_fs_desktop.db").to_str().unwrap().to_string()
+        database_url = get_config_dir().join("encrypted_fs_desktop.db").to_str().unwrap().to_string()
     }
 
     let mut conn = SqliteConnection::establish(&database_url)?;
