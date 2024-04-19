@@ -1,3 +1,6 @@
+mod daemon_service;
+mod persistence_service;
+
 use std::{fs, sync};
 use std::sync::mpsc::Sender;
 use std::time::Duration;
@@ -17,6 +20,7 @@ use egui_notify::{Toast, Toasts};
 use tonic::{Response, Status};
 use tonic::transport::Channel;
 use tracing::{debug, error};
+use daemon_service::DaemonService;
 use encrypted_fs_desktop_common::schema::vaults::dsl::vaults;
 use encrypted_fs_desktop_common::schema::vaults::{data_dir, mount_point, name};
 use encrypted_fs_desktop_common::vault_service_error::{VaultServiceError};
@@ -25,6 +29,7 @@ use crate::daemon_service::vault_service_client::VaultServiceClient;
 use crate::dashboard::{Item, UiReply};
 use crate::{DB_CONN, DEVMODE, RT};
 use crate::daemon_service::{EmptyReply, IdRequest, StringIdRequest};
+use crate::detail::persistence_service::DbService;
 
 enum ServiceReply {
     UnlockVaultReply(EmptyReply),
@@ -42,11 +47,13 @@ pub struct ViewGroupDetail {
     pub(crate) data_dir: Option<String>,
     pub(crate) locked: bool,
 
-    confirmation_delete_pending: bool,
-
-    tx_service: Sender<ServiceReply>,
-    rx_service: Receiver<ServiceReply>,
     tx_parent: Sender<UiReply>,
+    rx_service: Receiver<ServiceReply>,
+
+    daemon_service: DaemonService,
+    db_service: DbService,
+
+    confirmation_delete_pending: bool,
 
     toasts: Toasts,
 }
@@ -98,10 +105,10 @@ impl eframe::App for ViewGroupDetail {
                         ui.label(if self.locked { "Unlock the vault" } else { "Lock the vault" });
                     }).clicked() {
                         if self.locked {
-                            self.service_unlock_vault();
+                            self.daemon_service.unlock_vault();
                             customize_toast_duration(self.toasts.warning("please wait, it takes up to 10 seconds to unlock the vault, you will be notified"), 10)
                         } else {
-                            self.service_lock_vault();
+                            self.daemon_service.lock_vault();
                         }
                     }
                 }
@@ -136,8 +143,8 @@ impl eframe::App for ViewGroupDetail {
                                     }
                                     let old_mount_point = self.mount_point.as_ref().unwrap().clone();
                                     self.mount_point = Some(path.display().to_string());
-                                    self.db_update(mount_point.eq(self.mount_point.as_ref().unwrap().clone()));
-                                    self.service_change_mount_point(old_mount_point);
+                                    self.db_service.update(mount_point.eq(self.mount_point.as_ref().unwrap().clone()));
+                                    self.daemon_service.change_mount_point(old_mount_point);
                                 }
                             }
                         }
@@ -165,8 +172,8 @@ impl eframe::App for ViewGroupDetail {
                                 } else {
                                     let old_data_dir = self.data_dir.as_ref().unwrap().clone();
                                     self.data_dir = Some(path.display().to_string());
-                                    self.db_update(data_dir.eq(self.data_dir.as_ref().unwrap().clone()));
-                                    self.service_change_data_dir(old_data_dir);
+                                    self.db_service.update(data_dir.eq(self.data_dir.as_ref().unwrap().clone()));
+                                    self.daemon_service.change_data_dir(old_data_dir);
                                 }
                             }
                         }
@@ -187,7 +194,7 @@ impl eframe::App for ViewGroupDetail {
                             } else if self.data_dir.is_none() {
                                 err = Some("invalid data dir".into());
                             } else {
-                                match self.db_save() {
+                                match self.db_insert() {
                                     Ok(_) => {
                                         self.tx_parent.send(UiReply::VaultInserted).unwrap();
                                         msg = Some(format!("vault {} saved", self.name));
@@ -225,7 +232,7 @@ impl eframe::App for ViewGroupDetail {
                                 // confirmed, delete
                                 self.confirmation_delete_pending = false;
                                 // TODO move to service
-                                if let Err(err) = self.db_delete() {
+                                if let Err(err) = self.db_service.delete() {
                                     customize_toast(self.toasts.error(format!("failed to delete: {:?}", err)))
                                 } else {
                                     self.tx_parent.send(UiReply::VaultDeleted).unwrap();
@@ -262,23 +269,12 @@ impl ViewGroupDetail {
             data_dir: None,
             locked: true,
             confirmation_delete_pending: false,
-            tx_service,
             rx_service,
-            tx_parent,
+            tx_parent: tx_parent.clone(),
+            daemon_service: DaemonService::new(None, tx_service.clone(), tx_parent.clone()),
+            db_service: DbService::new(None, tx_parent),
             toasts: Toasts::default(),
         }
-    }
-
-    async fn create_client(tx: Sender<ServiceReply>) -> Result<VaultServiceClient<Channel>, ()> {
-        // TODO: resolve port dynamically
-        let client = VaultServiceClient::connect("http://[::1]:50051").await;
-        if !client.is_err() {
-            return Ok(client.unwrap());
-        }
-        let err = client.unwrap_err();
-        error!("Error: {:?}", err);
-        tx.send(ServiceReply::Error(format!("Error: {:?}", err))).unwrap();
-        Err(())
     }
 
     pub fn new_by_item(item: Item, tx_parent: Sender<UiReply>) -> Self {
@@ -291,155 +287,31 @@ impl ViewGroupDetail {
             data_dir: Some(item.data_dir),
             locked: item.locked,
             confirmation_delete_pending: false,
-            tx_service,
             rx_service,
-            tx_parent,
+            tx_parent: tx_parent.clone(),
+            daemon_service: DaemonService::new(Some(item.id), tx_service.clone(), tx_parent.clone()),
+            db_service: DbService::new(None, tx_parent),
             toasts: Toasts::default(),
         }
     }
 
-    fn service_unlock_vault(&mut self) {
-        let id = self.id.as_ref().unwrap().clone() as u32;
-        let tx = self.tx_service.clone();
-        let tx_parent = self.tx_parent.clone();
-        RT.spawn(async move {
-            let mut client = if let Ok(client) = Self::create_client(tx.clone()).await { client } else { return; };
-
-            let request = tonic::Request::new(IdRequest {
-                id,
-            });
-            Self::handle_empty_response(client.unlock(request).await, ServiceReply::UnlockVaultReply, tx, tx_parent);
-        });
-    }
-
-    fn service_lock_vault(&mut self) {
-        let id = self.id.as_ref().unwrap().clone() as u32;
-        let tx = self.tx_service.clone();
-        let tx_parent = self.tx_parent.clone();
-        RT.spawn(async move {
-            let mut client = if let Ok(client) = Self::create_client(tx.clone()).await { client } else { return; };
-
-            let request = tonic::Request::new(IdRequest {
-                id,
-            });
-            Self::handle_empty_response(client.lock(request).await, ServiceReply::LockVaultReply, tx, tx_parent);
-        });
-    }
-
-    fn service_change_mount_point(&mut self, value: String) {
-        let id = self.id.as_ref().unwrap().clone() as u32;
-        let tx = self.tx_service.clone();
-        let tx_parent = self.tx_parent.clone();
-        RT.spawn(async move {
-            let mut client = if let Ok(client) = Self::create_client(tx.clone()).await { client } else { return; };
-
-            let request = tonic::Request::new(StringIdRequest {
-                id,
-                value,
-            });
-            Self::handle_empty_response(client.change_mount_point(request).await, ServiceReply::ChangeMountPoint, tx, tx_parent);
-        });
-    }
-
-    fn service_change_data_dir(&mut self, value: String) {
-        let id = self.id.as_ref().unwrap().clone() as u32;
-        let tx = self.tx_service.clone();
-        let tx_parent = self.tx_parent.clone();
-        RT.spawn(async move {
-            let mut client = if let Ok(client) = Self::create_client(tx.clone()).await { client } else { return; };
-
-            let request = tonic::Request::new(StringIdRequest {
-                id,
-                value,
-            });
-            Self::handle_empty_response(client.change_data_dir(request).await, ServiceReply::ChangeDataDir, tx, tx_parent);
-        });
-    }
-
-    fn handle_empty_response(result: Result<Response<EmptyReply>, Status>, f: impl FnOnce(EmptyReply) -> ServiceReply,
-                             tx: Sender<ServiceReply>, tx_parent: Sender<UiReply>) {
-        match result {
-            Ok(response) => {
-                if let Err(_) = tx.send(f(response.into_inner())) {
-                    // in case the component is destroyed before the response is received we will not be able to notify service reply because the rx is closed
-                    // in that case notify parent for update because it's rx is still open
-                    let _ = tx_parent.send(UiReply::VaultUpdated(true));
-                }
-            }
-            Err(err) => {
-                let vault_service_error: Result<VaultServiceError, _> = err.clone().try_into();
-                match vault_service_error {
-                    Ok(err2) => {
-                        error!("Error: {}", err2);
-                        if let Err(_) = tx.send(ServiceReply::VaultServiceError(err2.clone())) {
-                            // in case the component is destroyed before the response is received we will not be able to notify service reply because the rx is closed
-                            // in that case notify parent for update because it's rx is still open
-                            let _ = tx_parent.send(UiReply::Error(err2.to_string()));
-                        }
-                    }
-                    _ => {
-                        error!("Error: {}", err);
-                        let res = tx.send(ServiceReply::Error(format!("Error: {}", err)));
-                        if let Err(err) = res {
-                            // in case the component is destroyed before the response is received we will not be able to notify service reply because the rx is closed
-                            // in that case notify parent for update because it's rx is still open
-                            let _ = tx_parent.send(UiReply::Error(err.to_string()));
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    fn db_save(&mut self) -> QueryResult<()> {
-        use encrypted_fs_desktop_common::schema::vaults::*;
-
-        let mut lock = DB_CONN.lock().unwrap();
-        let mut dao = VaultDao::new(&mut lock);
-        if self.id.is_some() {
-            dao.transaction(|mut dao| {
-                dao.update(self.id.as_ref().unwrap().clone(), name.eq(self.name.clone()))?;
-                dao.update(self.id.as_ref().unwrap().clone(), mount_point.eq(self.mount_point.as_ref().unwrap().clone()))?;
-                dao.update(self.id.as_ref().unwrap().clone(), data_dir.eq(self.data_dir.as_ref().unwrap().clone()))?;
-                dao.update(self.id.as_ref().unwrap().clone(), locked.eq(if self.locked { 1 } else { 0 }))?;
-
-                Ok(1)
-            })?;
-
-            Ok(())
-        } else {
-            let vault = NewVault {
-                name: self.name.clone(),
-                mount_point: self.mount_point.as_ref().unwrap().clone(),
-                data_dir: self.data_dir.as_ref().unwrap().clone(),
-            };
-            dao.insert(&vault)
-        }
-    }
-
-    fn db_delete(&self) -> QueryResult<()> {
-        let mut lock = DB_CONN.lock().unwrap();
-        let mut dao = VaultDao::new(&mut lock);
-        dao.delete(self.id.as_ref().unwrap().clone())
-    }
-
-    fn db_update<V>(&self, v: V)
-        where V: AsChangeset<Target=vaults>, <V as AsChangeset>::Changeset: QueryFragment<Sqlite>
-    {
-        let mut lock = DB_CONN.lock().unwrap();
-        let mut dao = VaultDao::new(&mut lock);
-        dao.update(self.id.as_ref().unwrap().clone(), v).unwrap();
-        self.tx_parent.send(UiReply::VaultUpdated(false)).unwrap();
+    fn db_insert(&mut self) -> QueryResult<()> {
+        let new_vault = NewVault {
+            name: self.name.clone(),
+            mount_point: self.mount_point.as_ref().unwrap().clone(),
+            data_dir: self.data_dir.as_ref().unwrap().clone(),
+        };
+        self.db_service.insert(new_vault)
     }
 
     fn db_reload(&mut self) {
-        let mut lock = DB_CONN.lock().unwrap();
-        let mut dao = VaultDao::new(&mut lock);
-        let e = dao.get(self.id.as_ref().unwrap().clone()).unwrap();
-        self.locked = e.locked == 1;
-        self.mount_point = Some(e.mount_point);
-        self.data_dir = Some(e.data_dir);
+        let vault = self.db_service.get_vault().unwrap();
+        self.name = vault.name;
+        self.mount_point = Some(vault.mount_point);
+        self.data_dir = Some(vault.data_dir);
+        self.locked = vault.locked == 1;
         self.tx_parent.send(UiReply::VaultUpdated(false)).unwrap();
+
     }
 
     fn ui_on_name_lost_focus(&mut self) {
