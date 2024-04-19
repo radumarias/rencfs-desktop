@@ -1,33 +1,32 @@
 extern crate daemonize;
 extern crate directories;
 
-use static_init::dynamic;
-use std::{fs, panic, thread};
-use std::env::current_dir;
-use std::fs::{File, OpenOptions};
-use std::path::PathBuf;
-use std::sync::{Arc};
+use std::thread;
+use std::fs::OpenOptions;
+use std::panic::catch_unwind;
+use std::sync::Arc;
+
 use daemonize::Daemonize;
-use diesel::SqliteConnection;
-use directories::ProjectDirs;
 use dotenvy::dotenv;
-use libc::gid_t;
+use once_cell::sync::Lazy;
 use tokio::sync::Mutex;
 use tokio::task;
 use tonic::transport::Server;
-
-use encrypted_fs_desktop_common::persistence::run_migrations;
 use tracing::{error, info};
-use encrypted_fs_desktop_common::app_details::{APPLICATION, ORGANIZATION, QUALIFIER};
-use encrypted_fs_desktop_common::{execute_catch_unwind, get_project_dirs};
+
+use encrypted_fs_desktop_common::get_project_dirs;
+use encrypted_fs_desktop_common::persistence::run_migrations;
+
 use crate::vault_service::MyVaultService;
 use crate::vault_service::vault_service_server::VaultServiceServer;
 
 mod vault_service;
 
+pub(crate) static DEVMODE: Lazy<bool> = Lazy::new(|| dotenv().is_ok());
+
 #[tokio::main]
 async fn main() {
-    if dotenv().is_ok() {
+    if *DEVMODE {
         // TODO: take level from configs
         let _guard = encrypted_fs_desktop_common::log_init("DEBUG", "daemon");
 
@@ -87,7 +86,7 @@ pub async fn run_in_daemon() {
     info!("Starting daemon");
 
     let res = task::spawn_blocking(|| {
-        panic::catch_unwind(|| {
+        catch_unwind(|| {
             let handle = tokio::runtime::Handle::current();
             handle.block_on(async {
                 daemon_run_async().await.expect("Error running daemon");
@@ -113,12 +112,10 @@ async fn daemon_run_async() -> Result<(), Box<dyn std::error::Error>> {
         panic!("Error connecting to database")
     });
 
-    unsafe {
-        run_migrations(&mut conn).unwrap_or_else(|_| {
-            error!("Cannot run migrations");
-            panic!("Cannot run migrations")
-        });
-    }
+    run_migrations(&mut conn).unwrap_or_else(|_| {
+        error!("Cannot run migrations");
+        panic!("Cannot run migrations")
+    });
     let db_conn = Arc::new(Mutex::new(conn));
 
     let addr = "[::1]:50051".parse()?;

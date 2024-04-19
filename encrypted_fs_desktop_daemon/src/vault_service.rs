@@ -1,13 +1,11 @@
-use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
-use std::ops::DerefMut;
 use std::sync::Arc;
-use diesel::SqliteConnection;
 
-use tokio::sync::{Mutex, RwLock};
-use tonic::{Code, Request, Response, Status};
-use tonic_types::{ErrorDetails, StatusExt};
+use diesel::SqliteConnection;
+use tokio::sync::Mutex;
+use tonic::{Request, Response, Status};
 use tracing::info;
+
 use encrypted_fs_desktop_common::vault_handler::{VaultHandler, VaultHandlerError};
 use encrypted_fs_desktop_common::vault_service_error::VaultServiceError;
 

@@ -1,24 +1,19 @@
+use std::env;
+
 use diesel::{Connection, ConnectionError, ConnectionResult, SqliteConnection};
-use dotenvy::dotenv;
-use std::{env, fs};
 use diesel::connection::SimpleConnection;
 use diesel::migration::MigrationVersion;
 use diesel_migrations::MigrationHarness;
-use directories::ProjectDirs;
 use tracing::info;
-use crate::app_details::{APPLICATION, ORGANIZATION, QUALIFIER};
-use crate::{get_project_dirs, MIGRATIONS};
 
-const DATABASE_FILE_NAME: &str = "encrypted_fs_desktop.db";
+use crate::{DEVMODE, get_project_dirs, MIGRATIONS};
 
 pub fn establish_connection() -> ConnectionResult<SqliteConnection> {
-    let mut database_url: String;
-    let env = dotenv();
-    if env.is_ok() {
-        info!("Loaded .env file");
+    let database_url: String;
+    if *DEVMODE {
         database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     } else {
-        database_url = get_project_dirs().config_dir().join(DATABASE_FILE_NAME).to_str().unwrap().to_string()
+        database_url = get_project_dirs().config_dir().join("encrypted_fs_desktop.db").to_str().unwrap().to_string()
     }
 
     let mut conn = SqliteConnection::establish(&database_url)?;

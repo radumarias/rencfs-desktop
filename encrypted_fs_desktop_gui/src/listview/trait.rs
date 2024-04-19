@@ -8,7 +8,7 @@ pub trait ItemTrait {
     fn id(&self, _data: Self::Data<'_>) -> Id;
 
     /// 正常状态下元素的frame配置
-    fn style_normal(&self, frame: &mut Frame) {}
+    fn style_normal(&self, _frame: &mut Frame) {}
 
     /// 元素clicked时的frame配置
     fn style_clicked(&self, frame: &mut Frame) {
@@ -16,7 +16,7 @@ pub trait ItemTrait {
     }
 
     /// 元素hovered时的frame配置
-    fn style_hovered(&self, frame: &mut Frame) {
+    fn style_hovered(&self, _frame: &mut Frame) {
         // frame.fill = Color32::DARK_GRAY;
     }
 

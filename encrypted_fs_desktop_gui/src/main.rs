@@ -1,18 +1,14 @@
 use std::panic;
 use std::panic::catch_unwind;
 use std::sync::Mutex;
-use diesel::Connection;
 use diesel::prelude::*;
-use diesel_migrations::MigrationHarness;
-use tokio::io::AsyncWriteExt;
-use tokio::task;
+use dotenvy::dotenv;
+use once_cell::sync::Lazy;
 use tracing::error;
 
-use encrypted_fs_desktop_common::models::NewVault;
 use encrypted_fs_desktop_common::persistence::run_migrations;
 use static_init::dynamic;
 use tokio::runtime::Runtime;
-use crate::daemon_service::vault_service_client::VaultServiceClient;
 use crate::dashboard::Dashboard;
 
 mod daemon_service {
@@ -23,10 +19,14 @@ mod dashboard;
 mod detail;
 mod listview;
 
+pub mod util;
+
 pub use listview::ListView;
 
 #[dynamic]
-pub static RT: Runtime = Runtime::new().expect("Cannot create tokio runtime");
+pub(crate) static RT: Runtime = Runtime::new().expect("Cannot create tokio runtime");
+
+pub(crate) static DEVMODE: Lazy<bool> = Lazy::new(|| dotenv().is_ok());
 
 #[dynamic]
 pub static DB_CONN: Mutex<SqliteConnection> = {
@@ -84,7 +84,7 @@ pub fn start_ui(conn: SqliteConnection) -> Result<(), eframe::Error> {
     eframe::run_native(
         "EncryptedFS",
         options,
-        Box::new(|cc| {
+        Box::new(|_cc| {
             Box::new(Dashboard::new(conn))
         }),
     )

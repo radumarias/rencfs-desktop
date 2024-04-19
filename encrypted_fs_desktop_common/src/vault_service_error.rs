@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tonic::Status;
@@ -26,7 +24,7 @@ impl TryFrom<Status> for VaultServiceError {
                     Err(())
                 }
             }
-            c => Err(()),
+            _ => Err(()),
         }
     }
 }

@@ -1,4 +1,3 @@
-use std::convert::Infallible;
 use std::{fs, sync};
 use std::sync::mpsc::Sender;
 use std::time::Duration;
@@ -8,15 +7,12 @@ use diesel::query_builder::QueryFragment;
 use diesel::result::DatabaseErrorKind::UniqueViolation;
 use diesel::result::Error::DatabaseError;
 use diesel::sqlite::Sqlite;
-use dotenvy::dotenv;
 
 use eframe::{egui, Frame};
 use eframe::egui::Context;
 use egui::{Button, ecolor, Widget};
 use encrypted_fs_desktop_common::dao::VaultDao;
 use encrypted_fs_desktop_common::models::NewVault;
-use eframe::emath::Align2;
-use eframe::epaint::FontId;
 use egui_notify::{Toast, Toasts};
 use tonic::{Response, Status};
 use tonic::transport::Channel;
@@ -27,7 +23,7 @@ use encrypted_fs_desktop_common::vault_service_error::{VaultServiceError};
 
 use crate::daemon_service::vault_service_client::VaultServiceClient;
 use crate::dashboard::{Item, UiReply};
-use crate::{DB_CONN, RT};
+use crate::{DB_CONN, DEVMODE, RT};
 use crate::daemon_service::{EmptyReply, IdRequest, StringIdRequest};
 
 enum ServiceReply {
@@ -56,7 +52,7 @@ pub struct ViewGroupDetail {
 }
 
 impl eframe::App for ViewGroupDetail {
-    fn update(&mut self, ctx: &Context, frame: &mut Frame) {
+    fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
         let customize_toast_duration = |t: &mut Toast, seconds: u64| {
             let duration = Some(Duration::from_secs(seconds));
             t.set_closable(false)
@@ -161,8 +157,7 @@ impl eframe::App for ViewGroupDetail {
                     });
                     if ui.button("...").clicked() {
                         if let Some(path) = rfd::FileDialog::new().pick_folder() {
-                            // TODO move dotenv() to global variable
-                            if dotenv().is_err() && fs::read_dir(path.clone()).unwrap().count() > 0 {
+                            if !*DEVMODE && fs::read_dir(path.clone()).unwrap().count() > 0 {
                                 customize_toast(self.toasts.error("data dir must be empty"));
                             } else {
                                 if path.to_string_lossy() == self.data_dir.as_ref().unwrap().as_str() {
@@ -197,7 +192,7 @@ impl eframe::App for ViewGroupDetail {
                                         self.tx_parent.send(UiReply::VaultInserted).unwrap();
                                         msg = Some(format!("vault {} saved", self.name));
                                     }
-                                    Err(DatabaseError((UniqueViolation), _)) => {
+                                    Err(DatabaseError(UniqueViolation, _)) => {
                                         err = Some(format!("another vault named {} exists", self.name));
                                     }
                                     Err(err2) => {
@@ -276,7 +271,7 @@ impl ViewGroupDetail {
 
     async fn create_client(tx: Sender<ServiceReply>) -> Result<VaultServiceClient<Channel>, ()> {
         // TODO: resolve port dynamically
-        let mut client = VaultServiceClient::connect("http://[::1]:50051").await;
+        let client = VaultServiceClient::connect("http://[::1]:50051").await;
         if !client.is_err() {
             return Ok(client.unwrap());
         }
@@ -365,8 +360,7 @@ impl ViewGroupDetail {
                              tx: Sender<ServiceReply>, tx_parent: Sender<UiReply>) {
         match result {
             Ok(response) => {
-                let res = tx.send(f(response.into_inner()));
-                if let Err(err) = res {
+                if let Err(_) = tx.send(f(response.into_inner())) {
                     // in case the component is destroyed before the response is received we will not be able to notify service reply because the rx is closed
                     // in that case notify parent for update because it's rx is still open
                     let _ = tx_parent.send(UiReply::VaultUpdated(true));
@@ -377,8 +371,7 @@ impl ViewGroupDetail {
                 match vault_service_error {
                     Ok(err2) => {
                         error!("Error: {}", err2);
-                        let res = tx.send(ServiceReply::VaultServiceError(err2.clone()));
-                        if let Err(err) = res {
+                        if let Err(_) = tx.send(ServiceReply::VaultServiceError(err2.clone())) {
                             // in case the component is destroyed before the response is received we will not be able to notify service reply because the rx is closed
                             // in that case notify parent for update because it's rx is still open
                             let _ = tx_parent.send(UiReply::Error(err2.to_string()));

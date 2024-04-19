@@ -1,7 +1,7 @@
 [package]
 name = "encrypted_fs_desktop_common"
 version = "0.1.0"
-edition = "2021"
+edition.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -20,3 +20,4 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }
 sysinfo = { workspace = true }
+once_cell = { workspace = true }

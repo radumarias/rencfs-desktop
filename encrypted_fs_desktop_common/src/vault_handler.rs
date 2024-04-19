@@ -1,17 +1,16 @@
-use std::{fs, process};
-use std::fs::{File, OpenOptions};
-use std::sync::mpsc::Receiver;
-use std::sync::{Arc};
-use diesel::{QueryResult, SqliteConnection};
+use std::process;
+use std::fs::OpenOptions;
+use std::sync::Arc;
 
+use diesel::{QueryResult, SqliteConnection};
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
-use sysinfo::{Pid, Process, ProcessStatus, System};
+use sysinfo::{Pid, ProcessStatus, System};
 use thiserror::Error;
 use tokio::process::{Child, Command};
 use tokio::sync::Mutex;
-use tonic::{Response, Status};
-use tracing::{debug, error, info, warn};
+use tracing::{error, info, warn};
+
 use crate::app_details::{APPLICATION, ORGANIZATION, QUALIFIER};
 use crate::dao::VaultDao;
 
@@ -74,7 +73,7 @@ impl VaultHandler {
                 let mut dao = VaultDao::new(&mut *guard);
                 match dao.get(self.id as i32) {
                     Ok(vault) => vault.mount_point,
-                    Err(err) => return {
+                    Err(err) => {
                         error!("Cannot get vault {}", err);
                         return Err(VaultHandlerError::CannotLockVault.into());
                     }
@@ -114,7 +113,7 @@ impl VaultHandler {
             let mut dao = VaultDao::new(&mut *guard);
             match dao.get(self.id as i32) {
                 Ok(vault) => vault,
-                Err(err) => return {
+                Err(err) => {
                     error!("Cannot get vault {}", err);
                     return Err(VaultHandlerError::CannotLockVault.into());
                 }
@@ -203,17 +202,17 @@ impl VaultHandler {
         Ok(())
     }
 
-    pub async fn change_mount_point(&mut self, mount_point: String) -> Result<(), VaultHandlerError> {
+    pub async fn change_mount_point(&mut self, old_mount_point: String) -> Result<(), VaultHandlerError> {
         let unlocked = self.child.is_some();
         if unlocked {
-            self.lock(Some(mount_point)).await?;
+            self.lock(Some(old_mount_point)).await?;
             self.unlock().await?;
         }
 
         Ok(())
     }
 
-    pub async fn change_data_dir(&mut self, data_dir: String) -> Result<(), VaultHandlerError> {
+    pub async fn change_data_dir(&mut self, old_data_dir: String) -> Result<(), VaultHandlerError> {
         let unlocked = self.child.is_some();
         if unlocked {
             let mount_point = {
@@ -221,7 +220,7 @@ impl VaultHandler {
                 let mut dao = VaultDao::new(&mut *guard);
                 match dao.get(self.id as i32) {
                     Ok(vault) => vault.mount_point,
-                    Err(err) => return {
+                    Err(err) => {
                         error!("Cannot get vault {}", err);
                         return Err(VaultHandlerError::CannotLockVault.into());
                     }
@@ -235,8 +234,8 @@ impl VaultHandler {
         Ok(())
     }
 
-    async fn db_update_locked(&self, state: bool, mut dao: &mut VaultDao<'_>) -> QueryResult<()> {
-        use crate::schema::vaults::dsl::{locked};
+    async fn db_update_locked(&self, state: bool, dao: &mut VaultDao<'_>) -> QueryResult<()> {
+        use crate::schema::vaults::dsl::locked;
         use diesel::ExpressionMethods;
 
         dao.update(self.id as i32, locked.eq(if state { 1 } else { 0 }))

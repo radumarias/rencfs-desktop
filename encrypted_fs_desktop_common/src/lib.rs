@@ -1,16 +1,13 @@
 use std::{fs, panic};
-use std::future::Future;
 use std::panic::UnwindSafe;
 use std::str::FromStr;
 
-use diesel::{Connection, IntoSql};
-use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use diesel_migrations::{embed_migrations, EmbeddedMigrations};
 use directories::ProjectDirs;
+use dotenvy::dotenv;
+use once_cell::sync::Lazy;
 use tracing::{error, Level};
 use tracing_appender::non_blocking::WorkerGuard;
-use tracing_subscriber::{fmt, Layer};
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
 
 use crate::app_details::{APPLICATION, ORGANIZATION, QUALIFIER};
 
@@ -24,31 +21,29 @@ pub mod vault_handler;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
-pub fn log_init(level: &str, prefix: &str) -> WorkerGuard {
-    let mut guard: Option<WorkerGuard> = None;
+pub(crate) static DEVMODE: Lazy<bool> = Lazy::new(|| dotenv().is_ok());
 
-    if dotenvy::dotenv().is_ok() {
+pub fn log_init(level: &str, prefix: &str) -> WorkerGuard {
+    if *DEVMODE {
         // for dev mode print to stdout
-        let (writer, guard2) = tracing_appender::non_blocking(std::io::stdout());
+        let (writer, guard) = tracing_appender::non_blocking(std::io::stdout());
         tracing_subscriber::fmt()
             .with_writer(writer)
             .with_max_level(Level::from_str(level).unwrap())
             .init();
-        guard = Some(guard2);
+        guard
     } else {
         // for prod mode print to file
         let logs_path = get_project_dirs().data_local_dir().join("logs");
 
         let file_appender = tracing_appender::rolling::daily(logs_path.to_str().unwrap(), format!("{}.log", prefix));
-        let (file_writer, guard2) = tracing_appender::non_blocking(file_appender);
+        let (file_writer, guard) = tracing_appender::non_blocking(file_appender);
         tracing_subscriber::fmt()
             .with_writer(file_writer)
             .with_max_level(Level::from_str(level).unwrap())
             .init();
-        guard = Some(guard2);
+        guard
     }
-
-    guard.take().unwrap()
 }
 
 pub async fn execute_catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) {

@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 use std::sync;
 use std::sync::RwLock;
-use std::time::Duration;
 
 use diesel::SqliteConnection;
 use eframe::egui::{
@@ -9,8 +8,8 @@ use eframe::egui::{
 };
 use eframe::egui;
 use eframe::emath::Align;
-use egui::{Frame, Layout, Ui, Widget};
-use egui_notify::{Toast, Toasts};
+use egui::{Frame, Layout, Ui};
+use egui_notify::Toasts;
 
 use encrypted_fs_desktop_common::dao::VaultDao;
 
@@ -18,6 +17,7 @@ use crate::detail::ViewGroupDetail;
 use crate::ListView;
 use crate::listview::r#trait::ItemTrait;
 use crate::listview::state::State;
+use crate::util::customize_toast;
 
 static CURRENT_VAULT_ITEM: RwLock<Option<Item>> = RwLock::new(None);
 static CURRENT_VAULT_ID: RwLock<Option<i32>> = RwLock::new(None);
@@ -141,17 +141,6 @@ impl Dashboard {
 
 impl eframe::App for Dashboard {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        // TODO move to common place
-        let customize_toast_duration = |t: &mut Toast, seconds: u64| {
-            let duration = Some(Duration::from_secs(seconds));
-            t.set_closable(false)
-                .set_duration(duration)
-                .set_show_progress_bar(false);
-        };
-        let customize_toast = |t: &mut Toast| {
-            customize_toast_duration(t, 5);
-        };
-
         if let Ok(msg) = self.rx.try_recv() {
             match msg {
                 UiReply::VaultUpdated(show_message) => {
