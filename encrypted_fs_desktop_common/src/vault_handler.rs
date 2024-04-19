@@ -11,7 +11,7 @@ use tokio::sync::Mutex;
 use tracing::{error, info, warn};
 
 use crate::dao::VaultDao;
-use crate::get_logs_dir;
+use crate::storage::get_logs_dir;
 
 #[derive(Debug, Error, Serialize, Deserialize, Clone)]
 pub enum VaultHandlerError {

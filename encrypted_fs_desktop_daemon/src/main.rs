@@ -13,9 +13,9 @@ use tokio::sync::Mutex;
 use tokio::task;
 use tonic::transport::Server;
 use tracing::{error, info};
-use encrypted_fs_desktop_common::{get_data_dir, get_logs_dir};
 
 use encrypted_fs_desktop_common::persistence::run_migrations;
+use encrypted_fs_desktop_common::storage::{get_data_dir, get_logs_dir};
 
 use crate::vault_service::MyVaultService;
 use crate::vault_service::vault_service_server::VaultServiceServer;
