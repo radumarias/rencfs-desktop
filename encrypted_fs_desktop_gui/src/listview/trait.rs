@@ -12,12 +12,12 @@ pub trait ItemTrait {
 
     /// 元素clicked时的frame配置
     fn style_clicked(&self, frame: &mut Frame) {
-        frame.fill = Color32::LIGHT_GREEN;
+        frame.fill = Color32::DARK_GRAY;
     }
 
     /// 元素hovered时的frame配置
     fn style_hovered(&self, frame: &mut Frame) {
-        frame.fill = Color32::LIGHT_YELLOW;
+        // frame.fill = Color32::DARK_GRAY;
     }
 
     /// 在列表中的显示

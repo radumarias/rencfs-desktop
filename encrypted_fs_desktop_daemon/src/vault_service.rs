@@ -47,7 +47,7 @@ impl VaultService for MyVaultService {
         let mut handlers = self.handlers.lock().await;
         let handler = handlers.entry(id).or_insert_with(|| VaultHandler::new(id, self.db_conn.clone()));
 
-        return MyVaultService::handle_handler_empty_response(handler.lock().await).await;
+        return MyVaultService::handle_handler_empty_response(handler.lock(None).await).await;
     }
 
     async fn unlock(&self, request: Request<IdRequest>) -> Result<Response<EmptyReply>, Status> {

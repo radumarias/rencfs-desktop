@@ -1,2 +1,4 @@
 /target
 /encrypted_fs_desktop.db
+/encrypted_fs_desktop.db-shm
+/encrypted_fs_desktop.db-wal

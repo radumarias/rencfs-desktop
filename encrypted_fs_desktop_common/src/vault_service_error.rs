@@ -6,7 +6,7 @@ use tonic::Status;
 
 use crate::vault_handler::VaultHandlerError;
 
-#[derive(Debug, Error, Serialize, Deserialize)]
+#[derive(Debug, Error, Serialize, Deserialize, Clone)]
 pub enum VaultServiceError {
     #[error("{0}")]
     VaultHandlerError(#[from] VaultHandlerError),

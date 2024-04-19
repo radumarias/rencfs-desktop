@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::sync;
 use std::sync::RwLock;
+use std::time::Duration;
 
 use diesel::SqliteConnection;
 use eframe::egui::{
@@ -8,7 +9,8 @@ use eframe::egui::{
 };
 use eframe::egui;
 use eframe::emath::Align;
-use egui::{Layout, Ui};
+use egui::{Frame, Layout, Ui, Widget};
+use egui_notify::{Toast, Toasts};
 
 use encrypted_fs_desktop_common::dao::VaultDao;
 
@@ -22,9 +24,10 @@ static CURRENT_VAULT_ID: RwLock<Option<i32>> = RwLock::new(None);
 
 pub(crate) enum UiReply {
     VaultInserted,
-    VaultUpdated,
+    VaultUpdated(bool),
     VaultDeleted,
     GoBack,
+    Error(String),
 }
 
 #[derive(Clone)]
@@ -43,6 +46,10 @@ impl ItemTrait for Item {
         egui::Id::new(self.id)
     }
 
+    fn style_clicked(&self, frame: &mut Frame) {
+        frame.fill = if self.locked { Color32::DARK_GRAY } else { Color32::DARK_GREEN };
+    }
+
     fn show(
         &self,
         selected: bool,
@@ -54,7 +61,13 @@ impl ItemTrait for Item {
         ui.vertical(|ui| {
             ui.horizontal(|ui| {
                 ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-                    ui.label(self.name.clone());
+                    ui.set_min_height(50.0);
+
+                    ui.label(RichText::new(if self.locked {
+                        format!("🔒 {}", self.name)
+                    } else {
+                        format!("🔓 {}", self.name)
+                    }).size(20.0).strong());
                 });
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     ui.label(format!("ID {}", self.id));
@@ -84,8 +97,11 @@ pub(crate) struct Dashboard {
     pub(crate) items: Vec<Item>,
     pub(crate) state: Option<State>,
     prev_state: Option<State>,
+
     tx: sync::mpsc::Sender<UiReply>,
     rx: sync::mpsc::Receiver<UiReply>,
+
+    toasts: Toasts,
 }
 
 impl Dashboard {
@@ -98,14 +114,19 @@ impl Dashboard {
             prev_state: None,
             tx,
             rx,
+            toasts: Toasts::default(),
         };
-        out.items = Self::load_items(&mut out.conn);
+        out.items = out.load_items();
+        if out.items.len() > 0 {
+            *CURRENT_VAULT_ID.write().unwrap() = Some(out.items[0].id);
+            *CURRENT_VAULT_ITEM.write().unwrap() = Some(out.items[0].clone());
+        }
 
         out
     }
 
-    fn load_items(conn: &mut SqliteConnection) -> Vec<Item> {
-        let mut dao = VaultDao::new(conn);
+    fn load_items(&mut self) -> Vec<Item> {
+        let mut dao = VaultDao::new(&mut self.conn);
         dao.get_all(None).unwrap().iter().map(|v| {
             Item {
                 id: v.id,
@@ -120,10 +141,24 @@ impl Dashboard {
 
 impl eframe::App for Dashboard {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        // TODO move to common place
+        let customize_toast_duration = |t: &mut Toast, seconds: u64| {
+            let duration = Some(Duration::from_secs(seconds));
+            t.set_closable(false)
+                .set_duration(duration)
+                .set_show_progress_bar(false);
+        };
+        let customize_toast = |t: &mut Toast| {
+            customize_toast_duration(t, 5);
+        };
+
         if let Ok(msg) = self.rx.try_recv() {
             match msg {
-                UiReply::VaultUpdated => {
-                    self.items = Self::load_items(&mut self.conn);
+                UiReply::VaultUpdated(show_message) => {
+                    if show_message {
+                        customize_toast(self.toasts.success("vault updated"));
+                    }
+                    self.items = self.load_items();
                 }
                 UiReply::GoBack => {
                     if let Some(state) = self.prev_state.take() {
@@ -134,12 +169,13 @@ impl eframe::App for Dashboard {
                 }
                 UiReply::VaultDeleted => {
                     self.state = None;
-                    self.items = Self::load_items(&mut self.conn);
+                    self.items = self.load_items();
                 }
                 UiReply::VaultInserted => {
                     self.state = None;
-                    self.items = Self::load_items(&mut self.conn);
+                    self.items = self.load_items();
                 }
+                UiReply::Error(err) => customize_toast(self.toasts.error(err)),
             }
         }
 
@@ -148,7 +184,7 @@ impl eframe::App for Dashboard {
         TopBottomPanel::top("top_menu").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.visuals_mut().button_frame = false;
-                // TODO: take from config
+                // TODO: keep in config
                 egui::widgets::global_dark_light_mode_switch(ui);
                 ui.separator();
             });
@@ -161,7 +197,8 @@ impl eframe::App for Dashboard {
                     ui.with_layout(
                         Layout::bottom_up(Align::Center).with_cross_justify(true),
                         |ui| {
-                            egui::Frame::default()
+                            let mut reset_list_selection = false;
+                            Frame::default()
                                 .outer_margin({
                                     let mut margin = Margin::default();
                                     margin.top = 6.0;
@@ -169,9 +206,7 @@ impl eframe::App for Dashboard {
                                 })
                                 .show(ui, |ui| {
                                     if ui.button("Add Vault").clicked() {
-                                        if self.prev_state.is_none() {
-                                            self.prev_state = self.state.take();
-                                        }
+                                        reset_list_selection = true;
                                         self.state = Some(State::Detail(
                                             ViewGroupDetail::new(self.tx.clone()),
                                         ));
@@ -180,14 +215,24 @@ impl eframe::App for Dashboard {
 
                             let mut margin = Margin::default();
                             margin.bottom = 60.0;
-                            ListView::new(self.items.iter(), ())
+                            let mut list_view = ListView::new(self.items.iter(), ());
+                            if reset_list_selection {
+                                list_view = list_view.reset_selection();
+                                if CURRENT_VAULT_ID.read().unwrap().is_some() {
+                                    CURRENT_VAULT_ID.write().unwrap().take();
+                                    CURRENT_VAULT_ITEM.write().unwrap().take();
+                                }
+                            }
+                            if CURRENT_VAULT_ITEM.read().unwrap().is_some() {
+                                list_view = list_view.selected_item(CURRENT_VAULT_ITEM.read().unwrap().as_ref().unwrap().id(()));
+                            }
+                            list_view
                                 .title("Vaults".into())
                                 .striped()
                                 .show(ctx, ui);
                             if CURRENT_VAULT_ITEM.read().unwrap().is_some() {
                                 let mut writer = CURRENT_VAULT_ITEM.write().unwrap();
                                 if let Some(item) = std::mem::take(&mut *writer) {
-                                    self.prev_state = self.state.take();
                                     self.state = Some(State::Detail(
                                         ViewGroupDetail::new_by_item(item, self.tx.clone()),
                                     ));
@@ -200,15 +245,21 @@ impl eframe::App for Dashboard {
         if let Some(state) = self.state.as_mut() {
             state.as_app().update(ctx, frame);
         } else {
+            let text = if self.items.len() > 0 {
+                "Select a vault or add a new one"
+            } else {
+                "No vaults found, add a new one"
+            };
             CentralPanel::default().show(ctx, |ui| {
                 ui.centered_and_justified(|ui| {
-                    ui.label(
-                        RichText::new("Nothing Selected")
-                            .font(FontId::proportional(20.0))
-                            .color(Color32::GRAY),
+                    ui.label(RichText::new(text)
+                                 .font(FontId::proportional(20.0))
+                                 .color(Color32::GRAY),
                     )
                 });
             });
         }
+
+        self.toasts.show(ctx);
     }
 }

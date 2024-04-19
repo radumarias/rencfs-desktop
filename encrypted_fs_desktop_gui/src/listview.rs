@@ -17,11 +17,14 @@ pub struct ListView<'a, W: ItemTrait + 'a, L: Iterator<Item=&'a W>> {
     pub(crate) outer_margin: Margin,
     pub(crate) rounding: Rounding,
     pub(crate) striped: bool,
+    pub(crate) reset_selection: bool,
+    pub(crate) selected_item_id: Option<Id>,
 }
 
 impl<'a, W: ItemTrait + 'a, L: Iterator<Item=&'a W>> ListView<'a, W, L> {
     pub fn new(items: L, data: W::Data<'a>) -> Self {
         Self {
+            reset_selection: false,
             with_search: false,
             title: Cow::Borrowed("Search"),
             hold_text: None,
@@ -31,11 +34,22 @@ impl<'a, W: ItemTrait + 'a, L: Iterator<Item=&'a W>> ListView<'a, W, L> {
             outer_margin: Margin::default(),
             rounding: Rounding::default(),
             striped: false,
+            selected_item_id: None,
         }
     }
 }
 
 impl<'a, W: ItemTrait + 'a, L: Iterator<Item=&'a W>> ListView<'a, W, L> {
+    pub fn selected_item(mut self, id: Id) -> Self {
+        self.selected_item_id = Some(id);
+        self
+    }
+
+    pub fn reset_selection(mut self) -> Self {
+        self.reset_selection = true;
+        self
+    }
+
     pub fn title(mut self, title: Cow<'a, str>) -> Self {
         self.title = title;
         self
@@ -80,7 +94,10 @@ impl<'a, W: ItemTrait + 'a, L: Iterator<Item=&'a W>> ListView<'a, W, L> {
 
         let mut resp = ui.vertical(|outer_ui| {
             let ListView {
-                with_search, title,
+                selected_item_id,
+                reset_selection,
+                with_search,
+                title,
                 hold_text,
                 items,
                 data,
@@ -95,6 +112,17 @@ impl<'a, W: ItemTrait + 'a, L: Iterator<Item=&'a W>> ListView<'a, W, L> {
                 let search_id = root_id.with("search");
                 let selected_id = root_id.with("selected");
                 let hovered_id = root_id.with("hovered");
+
+                if reset_selection {
+                    ui.data_mut(|d| {
+                        d.remove_temp::<Option<Id>>(selected_id);
+                        d.remove_temp::<Option<Id>>(hovered_id);
+                    });
+                } else if let Some(id) = selected_item_id {
+                    ui.data_mut(|d| {
+                        d.insert_temp(selected_id, Some(id));
+                    });
+                }
 
                 let mut search: String = ui.data_mut(|d| d.get_temp(search_id)).unwrap_or_default();
                 let mut selected: Option<Id> =

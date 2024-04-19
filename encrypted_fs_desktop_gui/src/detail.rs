@@ -3,9 +3,11 @@ use std::{fs, sync};
 use std::sync::mpsc::Sender;
 use std::time::Duration;
 use sync::mpsc::Receiver;
-use diesel::{ExpressionMethods, QueryResult};
+use diesel::{AsChangeset, ExpressionMethods, QueryResult};
+use diesel::query_builder::QueryFragment;
 use diesel::result::DatabaseErrorKind::UniqueViolation;
 use diesel::result::Error::DatabaseError;
+use diesel::sqlite::Sqlite;
 use dotenvy::dotenv;
 
 use eframe::{egui, Frame};
@@ -19,7 +21,8 @@ use egui_notify::{Toast, Toasts};
 use tonic::{Response, Status};
 use tonic::transport::Channel;
 use tracing::{debug, error};
-use encrypted_fs_desktop_common::schema::vaults::name;
+use encrypted_fs_desktop_common::schema::vaults::dsl::vaults;
+use encrypted_fs_desktop_common::schema::vaults::{data_dir, mount_point, name};
 use encrypted_fs_desktop_common::vault_service_error::{VaultServiceError};
 
 use crate::daemon_service::vault_service_client::VaultServiceClient;
@@ -68,20 +71,20 @@ impl eframe::App for ViewGroupDetail {
                 ServiceReply::UnlockVaultReply(_) => {
                     self.locked = false;
                     customize_toast(self.toasts.success("vault unlocked"));
-                    self.tx_parent.send(UiReply::VaultUpdated).unwrap();
+                    self.tx_parent.send(UiReply::VaultUpdated(false)).unwrap();
                 }
                 ServiceReply::LockVaultReply(_) => {
                     self.locked = true;
                     customize_toast(self.toasts.success("vault locked"));
-                    self.tx_parent.send(UiReply::VaultUpdated).unwrap();
+                    self.tx_parent.send(UiReply::VaultUpdated(false)).unwrap();
                 }
                 ServiceReply::ChangeMountPoint(_) => {
+                    self.db_reload();
                     customize_toast(self.toasts.success("mount point changed"));
-                    self.tx_parent.send(UiReply::VaultUpdated).unwrap();
                 }
                 ServiceReply::ChangeDataDir(_) => {
+                    self.db_reload();
                     customize_toast(self.toasts.success("data dir changed"));
-                    self.tx_parent.send(UiReply::VaultUpdated).unwrap();
                 }
                 ServiceReply::VaultServiceError(err) => customize_toast(self.toasts.error(err.to_string())),
                 ServiceReply::Error(s) => customize_toast(self.toasts.error(s.clone())),
@@ -99,10 +102,10 @@ impl eframe::App for ViewGroupDetail {
                         ui.label(if self.locked { "Unlock the vault" } else { "Lock the vault" });
                     }).clicked() {
                         if self.locked {
-                            self.service_unlock_vault(self.tx_service.clone());
-                            customize_toast_duration(self.toasts.info("please wait, it takes up to 10 seconds to unlock the vault, you will be notified"), 10)
+                            self.service_unlock_vault();
+                            customize_toast_duration(self.toasts.warning("please wait, it takes up to 10 seconds to unlock the vault, you will be notified"), 10)
                         } else {
-                            self.service_lock_vault(self.tx_service.clone());
+                            self.service_lock_vault();
                         }
                     }
                 }
@@ -126,11 +129,20 @@ impl eframe::App for ViewGroupDetail {
                     });
                     if ui.button("...").clicked() {
                         if let Some(path) = rfd::FileDialog::new().pick_folder() {
-                            if fs::read_dir(path.clone()).unwrap().count() > 0 {
-                                customize_toast(self.toasts.error("mount point must be empty"));
+                            if path.to_string_lossy() == self.mount_point.as_ref().unwrap().as_str() {
+                                customize_toast(self.toasts.error("you need to select a different path than existing one"));
                             } else {
-                                self.mount_point = Some(path.display().to_string());
-                                self.service_change_mount_point(path.display().to_string(), self.tx_service.clone());
+                                if fs::read_dir(path.clone()).unwrap().count() > 0 {
+                                    customize_toast(self.toasts.error("mount point must be empty"));
+                                } else {
+                                    if !self.locked {
+                                        customize_toast_duration(self.toasts.warning("please wait, it takes up to 10 seconds to change mount point, you will be notified"), 10)
+                                    }
+                                    let old_mount_point = self.mount_point.as_ref().unwrap().clone();
+                                    self.mount_point = Some(path.display().to_string());
+                                    self.db_update(mount_point.eq(self.mount_point.as_ref().unwrap().clone()));
+                                    self.service_change_mount_point(old_mount_point);
+                                }
                             }
                         }
                     }
@@ -150,14 +162,18 @@ impl eframe::App for ViewGroupDetail {
                     if ui.button("...").clicked() {
                         if let Some(path) = rfd::FileDialog::new().pick_folder() {
                             // TODO move dotenv() to global variable
-                            // if dotenv().is_err() {
-                            if fs::read_dir(path.clone()).unwrap().count() > 0 {
+                            if dotenv().is_err() && fs::read_dir(path.clone()).unwrap().count() > 0 {
                                 customize_toast(self.toasts.error("data dir must be empty"));
                             } else {
-                                self.data_dir = Some(path.display().to_string());
-                                self.service_change_data_dir(path.display().to_string(), self.tx_service.clone());
+                                if path.to_string_lossy() == self.data_dir.as_ref().unwrap().as_str() {
+                                    customize_toast(self.toasts.error("you need to select a different path than existing one"));
+                                } else {
+                                    let old_data_dir = self.data_dir.as_ref().unwrap().clone();
+                                    self.data_dir = Some(path.display().to_string());
+                                    self.db_update(data_dir.eq(self.data_dir.as_ref().unwrap().clone()));
+                                    self.service_change_data_dir(old_data_dir);
+                                }
                             }
-                            // }
                         }
                     }
                 });
@@ -287,32 +303,38 @@ impl ViewGroupDetail {
         }
     }
 
-    fn service_unlock_vault(&mut self, tx: Sender<ServiceReply>) {
+    fn service_unlock_vault(&mut self) {
         let id = self.id.as_ref().unwrap().clone() as u32;
+        let tx = self.tx_service.clone();
+        let tx_parent = self.tx_parent.clone();
         RT.spawn(async move {
             let mut client = if let Ok(client) = Self::create_client(tx.clone()).await { client } else { return; };
 
             let request = tonic::Request::new(IdRequest {
                 id,
             });
-            Self::handle_empty_response(client.unlock(request).await, ServiceReply::UnlockVaultReply, tx.clone());
+            Self::handle_empty_response(client.unlock(request).await, ServiceReply::UnlockVaultReply, tx, tx_parent);
         });
     }
 
-    fn service_lock_vault(&mut self, tx: Sender<ServiceReply>) {
+    fn service_lock_vault(&mut self) {
         let id = self.id.as_ref().unwrap().clone() as u32;
+        let tx = self.tx_service.clone();
+        let tx_parent = self.tx_parent.clone();
         RT.spawn(async move {
             let mut client = if let Ok(client) = Self::create_client(tx.clone()).await { client } else { return; };
 
             let request = tonic::Request::new(IdRequest {
                 id,
             });
-            Self::handle_empty_response(client.lock(request).await, ServiceReply::LockVaultReply, tx.clone());
+            Self::handle_empty_response(client.lock(request).await, ServiceReply::LockVaultReply, tx, tx_parent);
         });
     }
 
-    fn service_change_mount_point(&mut self, value: String, tx: Sender<ServiceReply>) {
+    fn service_change_mount_point(&mut self, value: String) {
         let id = self.id.as_ref().unwrap().clone() as u32;
+        let tx = self.tx_service.clone();
+        let tx_parent = self.tx_parent.clone();
         RT.spawn(async move {
             let mut client = if let Ok(client) = Self::create_client(tx.clone()).await { client } else { return; };
 
@@ -320,12 +342,14 @@ impl ViewGroupDetail {
                 id,
                 value,
             });
-            Self::handle_empty_response(client.change_mount_point(request).await, ServiceReply::ChangeMountPoint, tx.clone());
+            Self::handle_empty_response(client.change_mount_point(request).await, ServiceReply::ChangeMountPoint, tx, tx_parent);
         });
     }
 
-    fn service_change_data_dir(&mut self, value: String, tx: Sender<ServiceReply>) {
+    fn service_change_data_dir(&mut self, value: String) {
         let id = self.id.as_ref().unwrap().clone() as u32;
+        let tx = self.tx_service.clone();
+        let tx_parent = self.tx_parent.clone();
         RT.spawn(async move {
             let mut client = if let Ok(client) = Self::create_client(tx.clone()).await { client } else { return; };
 
@@ -333,23 +357,41 @@ impl ViewGroupDetail {
                 id,
                 value,
             });
-            Self::handle_empty_response(client.change_data_dir(request).await, ServiceReply::ChangeDataDir, tx);
+            Self::handle_empty_response(client.change_data_dir(request).await, ServiceReply::ChangeDataDir, tx, tx_parent);
         });
     }
 
-    fn handle_empty_response(result: Result<Response<EmptyReply>, Status>, f: impl FnOnce(EmptyReply) -> ServiceReply, tx: Sender<ServiceReply>) {
+    fn handle_empty_response(result: Result<Response<EmptyReply>, Status>, f: impl FnOnce(EmptyReply) -> ServiceReply,
+                             tx: Sender<ServiceReply>, tx_parent: Sender<UiReply>) {
         match result {
-            Ok(response) => tx.send(f(response.into_inner())).unwrap(),
+            Ok(response) => {
+                let res = tx.send(f(response.into_inner()));
+                if let Err(err) = res {
+                    // in case the component is destroyed before the response is received we will not be able to notify service reply because the rx is closed
+                    // in that case notify parent for update because it's rx is still open
+                    let _ = tx_parent.send(UiReply::VaultUpdated(true));
+                }
+            }
             Err(err) => {
                 let vault_service_error: Result<VaultServiceError, _> = err.clone().try_into();
                 match vault_service_error {
                     Ok(err2) => {
                         error!("Error: {}", err2);
-                        tx.send(ServiceReply::VaultServiceError(err2)).unwrap()
+                        let res = tx.send(ServiceReply::VaultServiceError(err2.clone()));
+                        if let Err(err) = res {
+                            // in case the component is destroyed before the response is received we will not be able to notify service reply because the rx is closed
+                            // in that case notify parent for update because it's rx is still open
+                            let _ = tx_parent.send(UiReply::Error(err2.to_string()));
+                        }
                     }
                     _ => {
                         error!("Error: {}", err);
-                        tx.send(ServiceReply::Error(format!("Error: {}", err))).unwrap()
+                        let res = tx.send(ServiceReply::Error(format!("Error: {}", err)));
+                        if let Err(err) = res {
+                            // in case the component is destroyed before the response is received we will not be able to notify service reply because the rx is closed
+                            // in that case notify parent for update because it's rx is still open
+                            let _ = tx_parent.send(UiReply::Error(err.to_string()));
+                        }
                     }
                 }
             }
@@ -388,13 +430,32 @@ impl ViewGroupDetail {
         dao.delete(self.id.as_ref().unwrap().clone())
     }
 
+    fn db_update<V>(&self, v: V)
+        where V: AsChangeset<Target=vaults>, <V as AsChangeset>::Changeset: QueryFragment<Sqlite>
+    {
+        let mut lock = DB_CONN.lock().unwrap();
+        let mut dao = VaultDao::new(&mut lock);
+        dao.update(self.id.as_ref().unwrap().clone(), v).unwrap();
+        self.tx_parent.send(UiReply::VaultUpdated(false)).unwrap();
+    }
+
+    fn db_reload(&mut self) {
+        let mut lock = DB_CONN.lock().unwrap();
+        let mut dao = VaultDao::new(&mut lock);
+        let e = dao.get(self.id.as_ref().unwrap().clone()).unwrap();
+        self.locked = e.locked == 1;
+        self.mount_point = Some(e.mount_point);
+        self.data_dir = Some(e.data_dir);
+        self.tx_parent.send(UiReply::VaultUpdated(false)).unwrap();
+    }
+
     fn ui_on_name_lost_focus(&mut self) {
         if let Some(id_v) = self.id {
             let mut guard = DB_CONN.lock().unwrap();
             let mut dao = VaultDao::new(&mut guard);
             if dao.get(id_v).unwrap().name != self.name {
                 dao.update(id_v, name.eq(self.name.clone())).unwrap();
-                self.tx_parent.send(UiReply::VaultUpdated).unwrap();
+                self.tx_parent.send(UiReply::VaultUpdated(true)).unwrap();
                 debug!("name updated");
             }
         }

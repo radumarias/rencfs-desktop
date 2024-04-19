@@ -4,7 +4,9 @@ package encrypted_fs_desktop;
 service VaultService {
   rpc Lock (IdRequest) returns (EmptyReply);
   rpc Unlock (IdRequest) returns (EmptyReply);
+  // request contains old mount point, the new one is already in db
   rpc ChangeMountPoint (StringIdRequest) returns (EmptyReply);
+  // request contains old data dir, the new one is already in db
   rpc ChangeDataDir (StringIdRequest) returns (EmptyReply);
 }
 
