@@ -6,30 +6,24 @@ use std::{fs, panic, thread};
 use std::env::current_dir;
 use std::fs::{File, OpenOptions};
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Arc};
 use daemonize::Daemonize;
 use diesel::SqliteConnection;
 use directories::ProjectDirs;
 use dotenvy::dotenv;
 use libc::gid_t;
+use tokio::sync::Mutex;
+use tokio::task;
+use tonic::transport::Server;
 
 use encrypted_fs_desktop_common::persistence::run_migrations;
 use tracing::{error, info};
 use encrypted_fs_desktop_common::app_details::{APPLICATION, ORGANIZATION, QUALIFIER};
 use encrypted_fs_desktop_common::{execute_catch_unwind, get_project_dirs};
+use crate::vault_service::MyVaultService;
+use crate::vault_service::vault_service_server::VaultServiceServer;
 
 mod vault_service;
-
-#[dynamic]
-pub static DB_CONN: Mutex<SqliteConnection> = {
-    match encrypted_fs_desktop_common::persistence::establish_connection() {
-        Ok(db) => { Mutex::new(db) }
-        Err(err) => {
-            error!("Error connecting to database: {:?}", err);
-            panic!("Error connecting to database: {:?}", err);
-        }
-    }
-};
 
 #[tokio::main]
 async fn main() {
@@ -38,7 +32,7 @@ async fn main() {
         let _guard = encrypted_fs_desktop_common::log_init("DEBUG", "daemon");
 
         // in dev mode we don't want to daemonize so we can see logs in console and have debug
-        encrypted_fs_desktop_daemon::run_in_daemon().await;
+        run_in_daemon().await;
     } else {
         daemonize();
     }
@@ -73,7 +67,7 @@ fn daemonize() {
             let handle = thread::spawn(|| {
                 let rt = tokio::runtime::Runtime::new().unwrap();
                 rt.block_on(async {
-                    encrypted_fs_desktop_daemon::run_in_daemon().await;
+                    run_in_daemon().await;
                 });
             });
             handle.join().unwrap();
@@ -87,4 +81,53 @@ fn daemonize() {
             error!("Error, {}", e)
         }
     }
+}
+
+pub async fn run_in_daemon() {
+    info!("Starting daemon");
+
+    let res = task::spawn_blocking(|| {
+        panic::catch_unwind(|| {
+            let handle = tokio::runtime::Handle::current();
+            handle.block_on(async {
+                daemon_run_async().await.expect("Error running daemon");
+            });
+        })
+    }).await;
+    match res {
+        Ok(Ok(_)) => println!("Program terminated successfully"),
+        Ok(Err(err)) => {
+            error!("Error: {:?}", err);
+            panic!("Error: {:?}", err);
+        }
+        Err(err) => {
+            error!("Error: {}", err);
+            panic!("Error: {}", err);
+        }
+    }
+}
+
+async fn daemon_run_async() -> Result<(), Box<dyn std::error::Error>> {
+    let mut conn = encrypted_fs_desktop_common::persistence::establish_connection().unwrap_or_else(|_| {
+        error!("Error connecting to database");
+        panic!("Error connecting to database")
+    });
+
+    unsafe {
+        run_migrations(&mut conn).unwrap_or_else(|_| {
+            error!("Cannot run migrations");
+            panic!("Cannot run migrations")
+        });
+    }
+    let db_conn = Arc::new(Mutex::new(conn));
+
+    let addr = "[::1]:50051".parse()?;
+    let service = MyVaultService::new(db_conn.clone());
+
+    Server::builder()
+        .add_service(VaultServiceServer::new(service))
+        .serve(addr)
+        .await?;
+
+    Ok(())
 }

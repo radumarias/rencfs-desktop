@@ -13,15 +13,16 @@ use egui::{Layout, Ui};
 use encrypted_fs_desktop_common::dao::VaultDao;
 
 use crate::detail::ViewGroupDetail;
-use crate::{ItemTrait, ListView};
-use crate::state::State;
+use crate::ListView;
+use crate::listview::r#trait::ItemTrait;
+use crate::listview::state::State;
 
 static CURRENT_VAULT_ITEM: RwLock<Option<Item>> = RwLock::new(None);
 static CURRENT_VAULT_ID: RwLock<Option<i32>> = RwLock::new(None);
 
 pub(crate) enum UiReply {
     VaultInserted,
-    VaultUpdated(bool),
+    VaultUpdated,
     VaultDeleted,
     GoBack,
 }
@@ -56,7 +57,7 @@ impl ItemTrait for Item {
                     ui.label(self.name.clone());
                 });
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    ui.label(format!("ID: {}", self.id));
+                    ui.label(format!("ID {}", self.id));
                 });
             });
         });
@@ -121,10 +122,8 @@ impl eframe::App for Dashboard {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         if let Ok(msg) = self.rx.try_recv() {
             match msg {
-                UiReply::VaultUpdated(name_changed) => {
-                    if name_changed {
-                        self.items = Self::load_items(&mut self.conn);
-                    }
+                UiReply::VaultUpdated => {
+                    self.items = Self::load_items(&mut self.conn);
                 }
                 UiReply::GoBack => {
                     if let Some(state) = self.prev_state.take() {
@@ -182,8 +181,7 @@ impl eframe::App for Dashboard {
                             let mut margin = Margin::default();
                             margin.bottom = 60.0;
                             ListView::new(self.items.iter(), ())
-                                .title("Search".into())
-                                .hold_text("something".into())
+                                .title("Vaults".into())
                                 .striped()
                                 .show(ctx, ui);
                             if CURRENT_VAULT_ITEM.read().unwrap().is_some() {

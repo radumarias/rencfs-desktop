@@ -21,13 +21,9 @@ mod daemon_service {
 
 mod dashboard;
 mod detail;
-mod state;
 mod listview;
-mod r#trait;
 
 pub use listview::ListView;
-pub use r#trait::ItemTrait;
-
 
 #[dynamic]
 pub static RT: Runtime = Runtime::new().expect("Cannot create tokio runtime");

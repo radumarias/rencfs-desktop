@@ -19,3 +19,4 @@ tonic-types = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }
+sysinfo = { workspace = true }

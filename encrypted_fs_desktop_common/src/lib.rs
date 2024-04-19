@@ -57,7 +57,7 @@ pub async fn execute_catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) {
         Ok(_) => {}
         Err(err) => {
             error!("Error: {:?}", err);
-            std::panic!("Error: {:?}", err);
+            panic!("Error: {:?}", err);
         }
     }
 }
@@ -66,6 +66,7 @@ pub fn get_project_dirs() -> ProjectDirs {
     let proj_dirs = if let Some(proj_dirs) = ProjectDirs::from(QUALIFIER, ORGANIZATION, APPLICATION) {
         proj_dirs
     } else {
+        error!("Cannot get project directories");
         panic!("Cannot get project directories");
     };
     fs::create_dir_all(proj_dirs.config_dir()).expect("Cannot create config directory");

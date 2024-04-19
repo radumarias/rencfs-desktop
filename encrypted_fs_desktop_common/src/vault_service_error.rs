@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tonic::Status;
@@ -6,11 +8,11 @@ use crate::vault_handler::VaultHandlerError;
 
 #[derive(Debug, Error, Serialize, Deserialize)]
 pub enum VaultServiceError {
-    #[error("vault handler error {0}")]
+    #[error("{0}")]
     VaultHandlerError(#[from] VaultHandlerError),
 }
 
-pub static CUSTOM_ERROR: &str = "x-custom-tonic-error-VaultReplyError";
+static CUSTOM_ERROR: &str = "x-custom-tonic-error-vault_service_error";
 
 impl TryFrom<Status> for VaultServiceError {
     type Error = ();

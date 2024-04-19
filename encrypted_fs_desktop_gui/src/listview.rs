@@ -1,11 +1,14 @@
 use egui::{
-    Align, Frame, Id, Label, Layout, Margin, RichText, Rounding, ScrollArea, Sense, Style, TextEdit,
+    Align, Id, Label, Layout, Margin, RichText, Rounding, ScrollArea, Sense, TextEdit,
 };
 use std::borrow::Cow;
+use crate::listview::r#trait::ItemTrait;
 
-use crate::r#trait::ItemTrait;
+pub mod state;
+pub mod r#trait;
 
-pub struct ListView<'a, W: ItemTrait + 'a, L: Iterator<Item = &'a W>> {
+pub struct ListView<'a, W: ItemTrait + 'a, L: Iterator<Item=&'a W>> {
+    pub(crate) with_search: bool,
     pub(crate) title: Cow<'a, str>,
     pub(crate) hold_text: Option<Cow<'a, str>>,
     pub(crate) items: L,
@@ -16,9 +19,10 @@ pub struct ListView<'a, W: ItemTrait + 'a, L: Iterator<Item = &'a W>> {
     pub(crate) striped: bool,
 }
 
-impl<'a, W: ItemTrait + 'a, L: Iterator<Item = &'a W>> ListView<'a, W, L> {
+impl<'a, W: ItemTrait + 'a, L: Iterator<Item=&'a W>> ListView<'a, W, L> {
     pub fn new(items: L, data: W::Data<'a>) -> Self {
         Self {
+            with_search: false,
             title: Cow::Borrowed("Search"),
             hold_text: None,
             items,
@@ -31,9 +35,14 @@ impl<'a, W: ItemTrait + 'a, L: Iterator<Item = &'a W>> ListView<'a, W, L> {
     }
 }
 
-impl<'a, W: ItemTrait + 'a, L: Iterator<Item = &'a W>> ListView<'a, W, L> {
+impl<'a, W: ItemTrait + 'a, L: Iterator<Item=&'a W>> ListView<'a, W, L> {
     pub fn title(mut self, title: Cow<'a, str>) -> Self {
         self.title = title;
+        self
+    }
+
+    pub fn with_search(mut self, with_search: bool) -> Self {
+        self.with_search = with_search;
         self
     }
 
@@ -71,7 +80,7 @@ impl<'a, W: ItemTrait + 'a, L: Iterator<Item = &'a W>> ListView<'a, W, L> {
 
         let mut resp = ui.vertical(|outer_ui| {
             let ListView {
-                title,
+                with_search, title,
                 hold_text,
                 items,
                 data,
@@ -99,20 +108,22 @@ impl<'a, W: ItemTrait + 'a, L: Iterator<Item = &'a W>> ListView<'a, W, L> {
                         ui.visuals_mut().button_frame = true;
                         ui.add(Label::new(RichText::new(title).strong()));
                     });
-                    ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
-                        if !search.is_empty() {
-                            ui.visuals_mut().button_frame = false;
-                            if ui.button("✖").on_hover_text("Clear search text").clicked() {
-                                search.clear();
+                    if with_search {
+                        ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
+                            if !search.is_empty() {
+                                ui.visuals_mut().button_frame = false;
+                                if ui.button("✖").on_hover_text("Clear search text").clicked() {
+                                    search.clear();
+                                }
                             }
-                        }
 
-                        let mut search_text = TextEdit::singleline(&mut search);
-                        if let Some(text) = hold_text {
-                            search_text = search_text.hint_text(text);
-                        }
-                        ui.add(search_text);
-                    });
+                            let mut search_text = TextEdit::singleline(&mut search);
+                            if let Some(text) = hold_text {
+                                search_text = search_text.hint_text(text);
+                            }
+                            ui.add(search_text);
+                        });
+                    }
                 });
 
                 ui.separator();
