@@ -7,3 +7,5 @@ It uses:
 - [tokio](https://crates.io/crates/tokio) for concurrency
 - [tonic](https://crates.io/crates/tonic) for gRPC communication between GUI and daemon
 - [diesel](https://crates.io/crates/diesel) with Sqlite for ORM
+
+![](https://github.com/radumarias/encrypted_fs_desktop/blob/main/demo.gif)
