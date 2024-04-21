@@ -115,9 +115,9 @@ impl VaultHandler {
         };
 
         // spawn new process
-        let child = Command::new("/home/gnome/dev/RustroverProjects/encrypted_fs/target/debug/encrypted_fs")
+        let child = Command::new("/home/gnome/dev/RustroverProjects/encryptedfs/target/debug/encryptedfs")
             // TODO get pass from keystore
-            .env("ENCRYPTED_FS_PASSWORD", "pass-42")
+            .env("ENCRYPTEDFS_PASSWORD", "pass-42")
             .stdout(stdout)
             .stderr(stderr)
             .arg("--mount-point")

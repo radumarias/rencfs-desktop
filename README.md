@@ -1,1 +1,1 @@
-# encrypted_fs_desktop
+# encryptedfs_desktop

@@ -14,8 +14,8 @@ use tokio::task;
 use tonic::transport::Server;
 use tracing::{error, info};
 
-use encrypted_fs_desktop_common::persistence::run_migrations;
-use encrypted_fs_desktop_common::storage::{get_data_dir, get_logs_dir};
+use encryptedfs_desktop_common::persistence::run_migrations;
+use encryptedfs_desktop_common::storage::{get_data_dir, get_logs_dir};
 
 use crate::vault_service::MyVaultService;
 use crate::vault_service::vault_service_server::VaultServiceServer;
@@ -28,7 +28,7 @@ pub(crate) static DEVMODE: Lazy<bool> = Lazy::new(|| dotenv().is_ok());
 async fn main() {
     if *DEVMODE {
         // TODO: take level from configs
-        let _guard = encrypted_fs_desktop_common::log_init("DEBUG", "daemon");
+        let _guard = encryptedfs_desktop_common::log_init("DEBUG", "daemon");
 
         // in dev mode we don't want to daemonize so we can see logs in console and have debug
         run_in_daemon().await;
@@ -60,7 +60,7 @@ fn daemonize() {
             println!("Privileged action, my uid is: {}, my gid is: {}", uid, gid);
 
             // TODO: take level from configs
-            let _guard = encrypted_fs_desktop_common::log_init("DEBUG", "daemon");
+            let _guard = encryptedfs_desktop_common::log_init("DEBUG", "daemon");
 
             let handle = thread::spawn(|| {
                 let rt = tokio::runtime::Runtime::new().unwrap();
@@ -106,7 +106,7 @@ pub async fn run_in_daemon() {
 }
 
 async fn daemon_run_async() -> Result<(), Box<dyn std::error::Error>> {
-    let mut conn = encrypted_fs_desktop_common::persistence::establish_connection().unwrap_or_else(|_| {
+    let mut conn = encryptedfs_desktop_common::persistence::establish_connection().unwrap_or_else(|_| {
         error!("Error connecting to database");
         panic!("Error connecting to database")
     });

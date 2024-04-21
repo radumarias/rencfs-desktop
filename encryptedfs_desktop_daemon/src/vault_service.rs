@@ -6,12 +6,12 @@ use tokio::sync::Mutex;
 use tonic::{Request, Response, Status};
 use tracing::info;
 
-use encrypted_fs_desktop_common::vault_handler::{VaultHandler, VaultHandlerError};
-use encrypted_fs_desktop_common::vault_service_error::VaultServiceError;
+use encryptedfs_desktop_common::vault_handler::{VaultHandler, VaultHandlerError};
+use encryptedfs_desktop_common::vault_service_error::VaultServiceError;
 
 use crate::vault_service::vault_service_server::VaultService;
 
-tonic::include_proto!("encrypted_fs_desktop");
+tonic::include_proto!("encryptedfs_desktop");
 
 pub struct MyVaultService{
     handlers: Arc<Mutex<HashMap<u32, VaultHandler>>>,

@@ -9,7 +9,7 @@ pub mod r#trait;
 
 pub struct ListView<'a, W: ItemTrait + 'a, L: Iterator<Item=&'a W>> {
     pub(crate) with_search: bool,
-    pub(crate) title: Cow<'a, str>,
+    pub(crate) title: Option<Cow<'a, str>>,
     pub(crate) hold_text: Option<Cow<'a, str>>,
     pub(crate) items: L,
     pub(crate) data: W::Data<'a>,
@@ -26,7 +26,7 @@ impl<'a, W: ItemTrait + 'a, L: Iterator<Item=&'a W>> ListView<'a, W, L> {
         Self {
             reset_selection: false,
             with_search: false,
-            title: Cow::Borrowed("Search"),
+            title: None,
             hold_text: None,
             items,
             data,
@@ -51,7 +51,7 @@ impl<'a, W: ItemTrait + 'a, L: Iterator<Item=&'a W>> ListView<'a, W, L> {
     }
 
     pub fn title(mut self, title: Cow<'a, str>) -> Self {
-        self.title = title;
+        self.title = Some(title);
         self
     }
 
@@ -132,10 +132,12 @@ impl<'a, W: ItemTrait + 'a, L: Iterator<Item=&'a W>> ListView<'a, W, L> {
                     ui.data_mut(|d| d.get_temp(hovered_id)).unwrap_or_default();
 
                 ui.horizontal_top(|ui| {
-                    ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
-                        ui.visuals_mut().button_frame = true;
-                        ui.add(Label::new(RichText::new(title).strong()));
-                    });
+                    if let Some(title) = title {
+                        ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
+                            ui.visuals_mut().button_frame = true;
+                            ui.add(Label::new(RichText::new(title).strong()));
+                        });
+                    }
                     if with_search {
                         ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
                             if !search.is_empty() {
@@ -153,8 +155,6 @@ impl<'a, W: ItemTrait + 'a, L: Iterator<Item=&'a W>> ListView<'a, W, L> {
                         });
                     }
                 });
-
-                ui.separator();
 
                 ScrollArea::vertical()
                     .id_source(root_id.with("list"))

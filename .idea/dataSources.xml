@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
-    <data-source source="LOCAL" name="encrypted_fs_desktop" uuid="3ae2ee95-195a-40c8-bee0-260c5dfadd9d">
+    <data-source source="LOCAL" name="encryptedfs_desktop" uuid="3ae2ee95-195a-40c8-bee0-260c5dfadd9d">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
-      <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/encrypted_fs_desktop_gui/encrypted_fs_desktop</jdbc-url>
+      <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/encryptedfs_desktop_gui/encryptedfs_desktop</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
   </component>

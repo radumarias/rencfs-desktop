@@ -11,7 +11,7 @@ use eframe::emath::Align;
 use egui::{Frame, Layout, Ui};
 use egui_notify::Toasts;
 
-use encrypted_fs_desktop_common::dao::VaultDao;
+use encryptedfs_desktop_common::dao::VaultDao;
 
 use crate::detail::ViewGroupDetail;
 use crate::ListView;
@@ -61,7 +61,7 @@ impl ItemTrait for Item {
         ui.vertical(|ui| {
             ui.horizontal(|ui| {
                 ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-                    ui.set_min_height(50.0);
+                    ui.set_min_height(42.0);
 
                     ui.label(RichText::new(if self.locked {
                         format!("🔒 {}", self.name)
@@ -173,11 +173,10 @@ impl eframe::App for Dashboard {
                 ui.visuals_mut().button_frame = false;
                 // TODO: keep in config
                 egui::widgets::global_dark_light_mode_switch(ui);
-                ui.separator();
             });
         });
         SidePanel::left("order_group_list")
-            .resizable(false)
+            .resizable(true)
             .default_width(250.0)
             .show(ctx, |ui| {
                 egui::Frame::default().outer_margin(6.0).show(ui, |ui| {
@@ -194,9 +193,10 @@ impl eframe::App for Dashboard {
                                 .show(ui, |ui| {
                                     if ui.button("Add Vault").clicked() {
                                         reset_list_selection = true;
-                                        self.state = Some(State::Detail(
-                                            ViewGroupDetail::new(self.tx.clone()),
-                                        ));
+                                        match ViewGroupDetail::new(self.tx.clone()) {
+                                            Ok(v) => self.state = Some(State::Detail(v)),
+                                            Err(err) => customize_toast(self.toasts.error(err)),
+                                        }
                                     }
                                 });
 
@@ -214,15 +214,15 @@ impl eframe::App for Dashboard {
                                 list_view = list_view.selected_item(CURRENT_VAULT_ITEM.read().unwrap().as_ref().unwrap().id(()));
                             }
                             list_view
-                                .title("Vaults".into())
                                 .striped()
                                 .show(ctx, ui);
                             if CURRENT_VAULT_ITEM.read().unwrap().is_some() {
                                 let mut writer = CURRENT_VAULT_ITEM.write().unwrap();
                                 if let Some(item) = std::mem::take(&mut *writer) {
-                                    self.state = Some(State::Detail(
-                                        ViewGroupDetail::new_by_item(item, self.tx.clone()),
-                                    ));
+                                    match ViewGroupDetail::new_by_item(item, self.tx.clone()) {
+                                        Ok(v) => self.state = Some(State::Detail(v)),
+                                        Err(err) => customize_toast(self.toasts.error(err)),
+                                    }
                                 }
                             }
                         },

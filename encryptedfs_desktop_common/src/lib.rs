@@ -1,16 +1,12 @@
-use std::{fs, panic};
+use std::panic;
 use std::panic::UnwindSafe;
-use std::path::PathBuf;
 use std::str::FromStr;
 
 use diesel_migrations::{embed_migrations, EmbeddedMigrations};
-use directories::ProjectDirs;
 use dotenvy::dotenv;
 use once_cell::sync::Lazy;
 use tracing::{error, Level};
 use tracing_appender::non_blocking::WorkerGuard;
-
-use crate::app_details::{APPLICATION, ORGANIZATION, QUALIFIER};
 
 pub mod schema;
 pub mod models;

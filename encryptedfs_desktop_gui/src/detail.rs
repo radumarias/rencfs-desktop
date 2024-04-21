@@ -10,11 +10,12 @@ use eframe::{egui, Frame};
 use eframe::egui::Context;
 use egui::{Button, ecolor, Widget};
 use egui_notify::{Toast, Toasts};
+use tracing::error;
 
 use daemon_service::DaemonService;
-use encrypted_fs_desktop_common::models::NewVault;
-use encrypted_fs_desktop_common::schema::vaults::{data_dir, mount_point, name};
-use encrypted_fs_desktop_common::vault_service_error::VaultServiceError;
+use encryptedfs_desktop_common::models::NewVault;
+use encryptedfs_desktop_common::schema::vaults::{data_dir, mount_point, name};
+use encryptedfs_desktop_common::vault_service_error::VaultServiceError;
 
 use crate::daemon_service::EmptyReply;
 use crate::dashboard::{Item, UiReply};
@@ -89,8 +90,6 @@ impl eframe::App for ViewGroupDetail {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.vertical(|ui| {
-                ui.label("Vault Detail");
-                ui.separator();
                 if self.id.is_some() {
                     ui.horizontal(|ui| {
                         ui.set_max_width(80.0);
@@ -267,10 +266,16 @@ impl eframe::App for ViewGroupDetail {
 }
 
 impl ViewGroupDetail {
-    pub fn new(tx_parent: Sender<UiReply>) -> Self {
+    pub fn new(tx_parent: Sender<UiReply>) -> Result<Self, String> {
         let (tx_service, rx_service) = sync::mpsc::channel::<ServiceReply>();
+        let daemon_service = DaemonService::new(None, tx_service.clone(), tx_parent.clone());
+        if let Err(err) = daemon_service {
+            error!("failed to initialize daemon service: {:?}", err);
+            return Err(err);
+        }
+        let daemon_service = daemon_service.unwrap();
 
-        ViewGroupDetail {
+        Ok(ViewGroupDetail {
             id: None,
             name: "".to_string(),
             mount_point: None,
@@ -279,16 +284,22 @@ impl ViewGroupDetail {
             confirmation_delete_pending: false,
             rx_service,
             tx_parent: tx_parent.clone(),
-            daemon_service: DaemonService::new(None, tx_service.clone(), tx_parent.clone()),
+            daemon_service,
             db_service: DbService::new(None, tx_parent),
             toasts: Toasts::default(),
-        }
+        })
     }
 
-    pub fn new_by_item(item: Item, tx_parent: Sender<UiReply>) -> Self {
+    pub fn new_by_item(item: Item, tx_parent: Sender<UiReply>) -> Result<Self, String> {
         let (tx_service, rx_service) = sync::mpsc::channel::<ServiceReply>();
+        let daemon_service = DaemonService::new(Some(item.id), tx_service.clone(), tx_parent.clone());
+        if let Err(err) = daemon_service {
+            error!("failed to initialize daemon service: {:?}", err);
+            return Err(err);
+        }
+        let daemon_service = daemon_service.unwrap();
 
-        ViewGroupDetail {
+        Ok(ViewGroupDetail {
             id: Some(item.id),
             name: item.name,
             mount_point: Some(item.mount_point),
@@ -297,10 +308,10 @@ impl ViewGroupDetail {
             confirmation_delete_pending: false,
             rx_service,
             tx_parent: tx_parent.clone(),
-            daemon_service: DaemonService::new(Some(item.id), tx_service.clone(), tx_parent.clone()),
+            daemon_service,
             db_service: DbService::new(Some(item.id), tx_parent),
             toasts: Toasts::default(),
-        }
+        })
     }
 
     fn db_insert(&mut self) -> QueryResult<()> {
@@ -323,8 +334,11 @@ impl ViewGroupDetail {
 
     fn ui_on_name_lost_focus(&mut self) {
         if let Some(_) = self.id {
-            self.db_service.update(name.eq(self.name.clone()));
-            self.tx_parent.send(UiReply::VaultUpdated(true)).unwrap();
+            let old_name = self.db_service.get_vault().unwrap().name;
+            if old_name != self.name {
+                self.db_service.update(name.eq(self.name.clone()));
+                self.tx_parent.send(UiReply::VaultUpdated(true)).unwrap();
+            }
         }
     }
 }
