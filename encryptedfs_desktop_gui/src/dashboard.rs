@@ -30,7 +30,7 @@ pub(crate) enum UiReply {
     Error(String),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Item {
     pub id: i32,
     pub name: String,

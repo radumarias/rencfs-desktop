@@ -4,7 +4,7 @@ use std::sync::Arc;
 use diesel::SqliteConnection;
 use tokio::sync::Mutex;
 use tonic::{Request, Response, Status};
-use tracing::info;
+use tracing::{info, instrument};
 
 use encryptedfs_desktop_common::vault_handler::{VaultHandler, VaultHandlerError};
 use encryptedfs_desktop_common::vault_service_error::VaultServiceError;
@@ -38,9 +38,10 @@ impl MyVaultService {
 
 #[tonic::async_trait]
 impl VaultService for MyVaultService {
+    #[instrument(skip(self), err)]
     async fn lock(&self, request: Request<IdRequest>) -> Result<Response<EmptyReply>, Status> {
         let id = request.into_inner().id;
-        info!("Vault {} lock request received", id);
+        info!(id, "Vault lock request received");
 
         let mut handlers = self.handlers.lock().await;
         let handler = handlers.entry(id).or_insert_with(|| VaultHandler::new(id, self.db_conn.clone()));
@@ -48,9 +49,10 @@ impl VaultService for MyVaultService {
         return MyVaultService::handle_handler_empty_response(handler.lock(None).await).await;
     }
 
+    #[instrument(skip(self), err)]
     async fn unlock(&self, request: Request<IdRequest>) -> Result<Response<EmptyReply>, Status> {
         let id = request.into_inner().id;
-        info!("Vault {} unlock request received", id);
+        info!(id, "Vault unlock request received");
 
         let mut handlers = self.handlers.lock().await;
         let handler = handlers.entry(id).or_insert_with(|| VaultHandler::new(id, self.db_conn.clone()));
@@ -58,10 +60,11 @@ impl VaultService for MyVaultService {
         return MyVaultService::handle_handler_empty_response(handler.unlock().await).await;
     }
 
+    #[instrument(skip(self), err)]
     async fn change_mount_point(&self, request: Request<StringIdRequest>) -> Result<Response<EmptyReply>, Status> {
         let request = request.into_inner();
         let id = request.id;
-        info!("Vault {} change mount point request received", id);
+        info!(id, "Vault change mount point request received");
 
         let mut handlers = self.handlers.lock().await;
         let handler = handlers.entry(id).or_insert_with(|| VaultHandler::new(id, self.db_conn.clone()));
@@ -69,10 +72,11 @@ impl VaultService for MyVaultService {
         return MyVaultService::handle_handler_empty_response(handler.change_mount_point(request.value).await).await;
     }
 
+    #[instrument(skip(self), err)]
     async fn change_data_dir(&self, request: Request<StringIdRequest>) -> Result<Response<EmptyReply>, Status> {
         let request = request.into_inner();
         let id = request.id;
-        info!("Vault {} change data dir request received", id);
+        info!(id, "Vault change data dir request received");
 
         let mut handlers = self.handlers.lock().await;
         let handler = handlers.entry(id).or_insert_with(|| VaultHandler::new(id, self.db_conn.clone()));

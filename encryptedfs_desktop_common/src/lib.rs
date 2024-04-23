@@ -5,7 +5,7 @@ use std::str::FromStr;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations};
 use dotenvy::dotenv;
 use once_cell::sync::Lazy;
-use tracing::{error, Level};
+use tracing::{error, instrument, Level};
 use tracing_appender::non_blocking::WorkerGuard;
 
 pub mod schema;
@@ -42,13 +42,14 @@ pub fn log_init(level: &str, prefix: &str) -> WorkerGuard {
     }
 }
 
+#[instrument(skip(f))]
 pub async fn execute_catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) {
     let res = panic::catch_unwind(f);
     match res {
         Ok(_) => {}
         Err(err) => {
-            error!("Error: {:?}", err);
-            panic!("Error: {:?}", err);
+            error!(?err);
+            panic!("{err:#?}");
         }
     }
 }

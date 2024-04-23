@@ -10,7 +10,7 @@ use eframe::{egui, Frame};
 use eframe::egui::Context;
 use egui::{Button, ecolor, Widget};
 use egui_notify::{Toast, Toasts};
-use tracing::error;
+use tracing::instrument;
 
 use daemon_service::DaemonService;
 use encryptedfs_desktop_common::models::NewVault;
@@ -266,11 +266,11 @@ impl eframe::App for ViewGroupDetail {
 }
 
 impl ViewGroupDetail {
+    #[instrument(name = "ViewGroupDetail", skip(tx_parent), err)]
     pub fn new(tx_parent: Sender<UiReply>) -> Result<Self, String> {
         let (tx_service, rx_service) = sync::mpsc::channel::<ServiceReply>();
         let daemon_service = DaemonService::new(None, tx_service.clone(), tx_parent.clone());
         if let Err(err) = daemon_service {
-            error!("failed to initialize daemon service: {:?}", err);
             return Err(err);
         }
         let daemon_service = daemon_service.unwrap();
@@ -290,11 +290,11 @@ impl ViewGroupDetail {
         })
     }
 
+    #[instrument(name = "ViewGroupDetail", skip(tx_parent), err)]
     pub fn new_by_item(item: Item, tx_parent: Sender<UiReply>) -> Result<Self, String> {
         let (tx_service, rx_service) = sync::mpsc::channel::<ServiceReply>();
         let daemon_service = DaemonService::new(Some(item.id), tx_service.clone(), tx_parent.clone());
         if let Err(err) = daemon_service {
-            error!("failed to initialize daemon service: {:?}", err);
             return Err(err);
         }
         let daemon_service = daemon_service.unwrap();

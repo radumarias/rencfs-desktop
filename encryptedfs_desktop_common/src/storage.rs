@@ -1,11 +1,12 @@
 use directories::ProjectDirs;
-use tracing::error;
+use tracing::{error, instrument};
 use std::{fs, panic};
 use std::path::PathBuf;
 use std::str::FromStr;
 use crate::app_details::{APPLICATION, ORGANIZATION, QUALIFIER};
 use crate::DEVMODE;
 
+#[instrument]
 pub fn get_project_dirs() -> ProjectDirs {
     let proj_dirs = if let Some(proj_dirs) = ProjectDirs::from(QUALIFIER, ORGANIZATION, APPLICATION) {
         proj_dirs

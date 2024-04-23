@@ -8,7 +8,7 @@ use sysinfo::{Pid, ProcessStatus, System};
 use thiserror::Error;
 use tokio::process::{Child, Command};
 use tokio::sync::Mutex;
-use tracing::{error, info, warn};
+use tracing::{error, info, instrument, warn};
 
 use crate::dao::VaultDao;
 use crate::storage::get_logs_dir;
@@ -36,8 +36,9 @@ impl VaultHandler {
         Self { id, child: None, db_conn }
     }
 
+    #[instrument(skip(self), fields(self.id), err)]
     pub async fn lock(&mut self, mount_point: Option<String>) -> Result<(), VaultHandlerError> {
-        info!("VaultHandler {} received lock request", self.id);
+        info!("");
 
         {
             let mut guard = self.db_conn.lock().await;
@@ -45,19 +46,19 @@ impl VaultHandler {
             match self.db_update_locked(true, &mut dao).await {
                 Ok(_) => {}
                 Err(err) => {
-                    error!("Cannot update vault state {}", err);
+                    error!(err = %err, "Cannot update vault state");
                     return Err(VaultHandlerError::CannotLockVault.into());
                 }
             }
         }
 
         if self.child.is_none() {
-            info!("VaultHandler {} already locked", self.id);
+            info!("VaultHandler already locked");
             return Ok(());
         }
-        info!("VaultHandler {} killing child process to lock the vault", self.id);
+        info!("VaultHandler killing child process to lock the vault");
         if let Err(err) = self.child.take().unwrap().kill().await {
-            error!("Error killing child process: {:?}", err);
+            error!(err = %err, "Error killing child process");
             return Err(VaultHandlerError::CannotLockVault.into());
         }
 
@@ -73,7 +74,7 @@ impl VaultHandler {
                 match dao.get(self.id as i32) {
                     Ok(vault) => vault.mount_point,
                     Err(err) => {
-                        error!("Cannot get vault {}", err);
+                        error!(%err, "Cannot get vault");
                         return Err(VaultHandlerError::CannotLockVault.into());
                     }
                 }
@@ -81,7 +82,7 @@ impl VaultHandler {
             if let Err(_) = process::Command::new("umount")
                 .arg(&mount_point)
                 .output() {
-                error!("Cannot umount {}", mount_point);
+                error!(mount_point, "Cannot umount");
                 return Err(VaultHandlerError::CannotLockVault.into());
             }
         }
@@ -89,11 +90,12 @@ impl VaultHandler {
         Ok(())
     }
 
+    #[instrument(skip(self), fields(self.id), err)]
     pub async fn unlock(&mut self) -> Result<(), VaultHandlerError> {
-        info!("VaultHandler {} received unlock request", self.id);
+        info!("");
 
         if self.child.is_some() {
-            info!("VaultHandler {} already unlocked", self.id);
+            info!("VaultHandler already unlocked");
             return Ok(());
         }
 
@@ -108,7 +110,7 @@ impl VaultHandler {
             match dao.get(self.id as i32) {
                 Ok(vault) => vault,
                 Err(err) => {
-                    error!("Cannot get vault {}", err);
+                    error!(err = %err, "Cannot get vault");
                     return Err(VaultHandlerError::CannotLockVault.into());
                 }
             }
@@ -129,7 +131,7 @@ impl VaultHandler {
         let child = match child {
             Ok(child) => child,
             Err(err) => {
-                error!("Cannot start process {}", err);
+                error!(err = %err, "Cannot start process");
                 return Err(VaultHandlerError::CannotUnlockVault.into());
             }
         };
@@ -188,7 +190,7 @@ impl VaultHandler {
         match self.db_update_locked(false, &mut dao).await {
             Ok(_) => {}
             Err(err) => {
-                error!("Cannot update vault state {}", err);
+                error!(err = %err, "Cannot update vault state");
                 return Err(VaultHandlerError::CannotUnlockVault.into());
             }
         }
@@ -196,7 +198,10 @@ impl VaultHandler {
         Ok(())
     }
 
+    #[instrument(skip(self), fields(self.id), err)]
     pub async fn change_mount_point(&mut self, old_mount_point: String) -> Result<(), VaultHandlerError> {
+        info!("");
+
         let unlocked = self.child.is_some();
         if unlocked {
             self.lock(Some(old_mount_point)).await?;
@@ -206,7 +211,10 @@ impl VaultHandler {
         Ok(())
     }
 
+    #[instrument(skip(self), fields(self.id), err)]
     pub async fn change_data_dir(&mut self, old_data_dir: String) -> Result<(), VaultHandlerError> {
+        info!("");
+
         let unlocked = self.child.is_some();
         if unlocked {
             let mount_point = {
@@ -215,7 +223,7 @@ impl VaultHandler {
                 match dao.get(self.id as i32) {
                     Ok(vault) => vault.mount_point,
                     Err(err) => {
-                        error!("Cannot get vault {}", err);
+                        error!(err = %err, "Cannot get vault");
                         return Err(VaultHandlerError::CannotChangeDataDir.into());
                     }
                 }
@@ -228,6 +236,7 @@ impl VaultHandler {
         Ok(())
     }
 
+    #[instrument(skip(self, dao), fields(self.id), err)]
     async fn db_update_locked(&self, state: bool, dao: &mut VaultDao<'_>) -> QueryResult<()> {
         use crate::schema::vaults::dsl::locked;
         use diesel::ExpressionMethods;

@@ -4,7 +4,7 @@ use diesel::{Connection, ConnectionError, ConnectionResult, SqliteConnection};
 use diesel::connection::SimpleConnection;
 use diesel::migration::MigrationVersion;
 use diesel_migrations::MigrationHarness;
-use tracing::info;
+use tracing::{info, instrument};
 
 use crate::{DEVMODE, MIGRATIONS};
 use crate::storage::get_config_dir;
@@ -30,6 +30,7 @@ pub fn establish_connection() -> ConnectionResult<SqliteConnection> {
     Ok(conn)
 }
 
+#[instrument(skip(conn))]
 pub fn run_migrations(conn: &mut SqliteConnection) -> diesel::migration::Result<Vec<MigrationVersion<'_>>> {
     info!("Running migrations");
     conn.run_pending_migrations(MIGRATIONS)

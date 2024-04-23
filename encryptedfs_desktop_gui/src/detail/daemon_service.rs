@@ -1,7 +1,7 @@
 use std::sync::mpsc::{Sender};
 use tonic::{Response, Status};
 use tonic::transport::{Channel, Error};
-use tracing::error;
+use tracing::{error, instrument};
 use encryptedfs_desktop_common::vault_service_error::VaultServiceError;
 use crate::daemon_service::{EmptyReply, IdRequest, StringIdRequest};
 use crate::daemon_service::vault_service_client::VaultServiceClient;
@@ -17,13 +17,13 @@ pub(super) struct DaemonService {
 }
 
 impl DaemonService {
+    #[instrument(name = "DaemonService::new", skip(tx_service, tx_parent), err)]
     pub(super) fn new(id: Option<i32>, tx_service: Sender<ServiceReply>, tx_parent: Sender<UiReply>) -> Result<Self, String> {
         let (tx2, tx_p2) = (tx_service.clone(), tx_parent.clone());
         RT.block_on(async {
             Self::create_client(tx2, tx_p2).await
         })
             .map_or_else(|err| {
-                error!("failed to connect to daemon: {}", err);
                 Err(format!("failed to connect to daemon: {}", err.to_string()))
             }, |client| Ok(Self { id, tx_service, tx_parent, client }))
     }
@@ -82,6 +82,7 @@ impl DaemonService {
         });
     }
 
+    #[instrument(skip(f))]
     fn handle_empty_response(result: Result<Response<EmptyReply>, Status>, f: impl FnOnce(EmptyReply) -> ServiceReply,
                              tx: Sender<ServiceReply>, tx_parent: Sender<UiReply>) {
         match result {
@@ -97,7 +98,7 @@ impl DaemonService {
                 let vault_service_error: Result<VaultServiceError, _> = err.clone().try_into();
                 match vault_service_error {
                     Ok(err2) => {
-                        error!("Error: {}", err2);
+                        error!(err2 = %err2);
                         let _ = tx.send(ServiceReply::VaultServiceError(err2.clone()))
                             .map_err(|_| {
                                 // in case the component is destroyed before the response is received we will not be able to notify service reply because the rx is closed
@@ -106,7 +107,7 @@ impl DaemonService {
                             });
                     }
                     _ => {
-                        error!("Error: {}", err);
+                        error!(err = %err);
                         let res = tx.send(ServiceReply::Error(format!("Error: {}", err)));
                         if let Err(err) = res {
                             // in case the component is destroyed before the response is received we will not be able to notify service reply because the rx is closed

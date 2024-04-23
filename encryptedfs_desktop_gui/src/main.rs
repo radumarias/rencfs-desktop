@@ -1,10 +1,11 @@
+use std::backtrace::Backtrace;
 use std::panic;
 use std::panic::catch_unwind;
 use std::sync::Mutex;
 use diesel::prelude::*;
 use dotenvy::dotenv;
 use once_cell::sync::Lazy;
-use tracing::error;
+use tracing::{error, instrument};
 
 use encryptedfs_desktop_common::persistence::run_migrations;
 use static_init::dynamic;
@@ -33,12 +34,13 @@ pub static DB_CONN: Mutex<SqliteConnection> = {
     match encryptedfs_desktop_common::persistence::establish_connection() {
         Ok(db) => { Mutex::new(db) }
         Err(err) => {
-            error!("Error connecting to database: {:?}", err);
+            error!(err = %err, "Error connecting to database");
             panic!("Error connecting to database: {:?}", err);
         }
     }
 };
 
+#[instrument]
 fn main() {
     // TODO: take level from configs
     let _guard = encryptedfs_desktop_common::log_init("DEBUG", "gui");
@@ -49,12 +51,14 @@ fn main() {
     match res {
         Ok(_) => println!("Program terminated successfully"),
         Err(err) => {
-            error!("Error: {:?}", err);
-            panic!("Error: {:?}", err);
+            error!("panic {err:#?}");
+            error!(backtrace = %Backtrace::force_capture());
+            panic!("{err:#?}");
         }
     }
 }
 
+#[instrument]
 fn run_main() -> Result<(), Box<dyn std::error::Error>> {
     let conn = encryptedfs_desktop_common::persistence::establish_connection();
     let mut conn = conn.unwrap_or_else(|_| {

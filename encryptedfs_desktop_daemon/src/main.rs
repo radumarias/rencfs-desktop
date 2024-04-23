@@ -1,6 +1,7 @@
 extern crate daemonize;
 extern crate directories;
 
+use std::backtrace::Backtrace;
 use std::thread;
 use std::fs::OpenOptions;
 use std::panic::catch_unwind;
@@ -12,7 +13,7 @@ use once_cell::sync::Lazy;
 use tokio::sync::Mutex;
 use tokio::task;
 use tonic::transport::Server;
-use tracing::{error, info};
+use tracing::{error, info, instrument};
 
 use encryptedfs_desktop_common::persistence::run_migrations;
 use encryptedfs_desktop_common::storage::{get_data_dir, get_logs_dir};
@@ -37,6 +38,7 @@ async fn main() {
     }
 }
 
+#[instrument]
 fn daemonize() {
     let logs_dir = get_logs_dir();
     let uid = unsafe { libc::getuid() };
@@ -76,11 +78,12 @@ fn daemonize() {
     match daemonize.start() {
         Ok(_) => {}
         Err(e) => {
-            error!("Error, {}", e)
+            error!(err = %e)
         }
     }
 }
 
+#[instrument]
 pub async fn run_in_daemon() {
     info!("Starting daemon");
 
@@ -95,16 +98,19 @@ pub async fn run_in_daemon() {
     match res {
         Ok(Ok(_)) => println!("Program terminated successfully"),
         Ok(Err(err)) => {
-            error!("Error: {:?}", err);
-            panic!("Error: {:?}", err);
+            error!("panic {err:#?}");
+            error!(backtrace = %Backtrace::force_capture());
+            panic!("{err:#?}");
         }
         Err(err) => {
-            error!("Error: {}", err);
-            panic!("Error: {}", err);
+            error!(err = %err, "panic");
+            error!(backtrace = %Backtrace::force_capture());
+            panic!("{err}");
         }
     }
 }
 
+#[instrument]
 async fn daemon_run_async() -> Result<(), Box<dyn std::error::Error>> {
     let mut conn = encryptedfs_desktop_common::persistence::establish_connection().unwrap_or_else(|_| {
         error!("Error connecting to database");
@@ -118,7 +124,7 @@ async fn daemon_run_async() -> Result<(), Box<dyn std::error::Error>> {
     let db_conn = Arc::new(Mutex::new(conn));
 
     let addr = "[::1]:50051".parse()?;
-    let service = MyVaultService::new(db_conn.clone());
+    let service = MyVaultService::new(db_conn);
 
     Server::builder()
         .add_service(VaultServiceServer::new(service))
