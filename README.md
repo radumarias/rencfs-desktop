@@ -1,4 +1,4 @@
-GUI for [encrypted_fs](https://github.com/radumarias/encrypted_fs)
+GUI for [encryptedfs](https://github.com/radumarias/encryptedfs)
 
 This is in very early stages, much more is to be implemented. Currently is working only on Linux, with plans to support macOS and Windows, Android and iOS in the future.
 
