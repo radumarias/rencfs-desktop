@@ -1,5 +1,5 @@
 syntax = "proto3";
-package encryptedfs_desktop;
+package rencfs_desktop;
 
 service VaultService {
   rpc Lock (IdRequest) returns (EmptyReply);

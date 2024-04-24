@@ -2,7 +2,7 @@ use std::sync::mpsc::{Sender};
 use tonic::{Response, Status};
 use tonic::transport::{Channel, Error};
 use tracing::{error, instrument};
-use encryptedfs_desktop_common::vault_service_error::VaultServiceError;
+use rencfs_desktop_common::vault_service_error::VaultServiceError;
 use crate::daemon_service::{EmptyReply, IdRequest, StringIdRequest};
 use crate::daemon_service::vault_service_client::VaultServiceClient;
 use crate::dashboard::UiReply;

@@ -13,9 +13,9 @@ use egui_notify::{Toast, Toasts};
 use tracing::instrument;
 
 use daemon_service::DaemonService;
-use encryptedfs_desktop_common::models::NewVault;
-use encryptedfs_desktop_common::schema::vaults::{data_dir, mount_point, name};
-use encryptedfs_desktop_common::vault_service_error::VaultServiceError;
+use rencfs_desktop_common::models::NewVault;
+use rencfs_desktop_common::schema::vaults::{data_dir, mount_point, name};
+use rencfs_desktop_common::vault_service_error::VaultServiceError;
 
 use crate::daemon_service::EmptyReply;
 use crate::dashboard::{Item, UiReply};

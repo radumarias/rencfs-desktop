@@ -1,5 +1,5 @@
 [package]
-name = "encryptedfs_desktop_common"
+name = "rencfs_desktop_common"
 version = "0.1.0"
 edition.workspace = true
 

@@ -2,9 +2,9 @@ use std::sync::mpsc::Sender;
 use diesel::{AsChangeset, QueryResult};
 use diesel::query_builder::QueryFragment;
 use diesel::sqlite::Sqlite;
-use encryptedfs_desktop_common::dao::VaultDao;
-use encryptedfs_desktop_common::models::{NewVault, Vault};
-use encryptedfs_desktop_common::schema::vaults::dsl::vaults;
+use rencfs_desktop_common::dao::VaultDao;
+use rencfs_desktop_common::models::{NewVault, Vault};
+use rencfs_desktop_common::schema::vaults::dsl::vaults;
 use crate::dashboard::UiReply;
 use crate::DB_CONN;
 

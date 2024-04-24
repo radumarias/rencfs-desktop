@@ -41,12 +41,12 @@ pub fn get_logs_dir() -> PathBuf {
     if *DEVMODE {
         get_dev_data_dir()
     } else {
-        get_project_dirs().data_local_dir().to_path_buf()
+        get_project_dirs().data_local_dir().join("logs")
     }
 }
 
 fn get_dev_data_dir() -> PathBuf {
     let path = PathBuf::from_str(&format!("/tmp/{}", APPLICATION.replace(" ", "-").to_lowercase())).unwrap();
-    fs::create_dir_all(&path).expect("Cannot create config directory");
+    fs::create_dir_all(&path).expect("Cannot create data directory");
     path
 }

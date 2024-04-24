@@ -1,4 +1,4 @@
-GUI for [encryptedfs](https://github.com/radumarias/encryptedfs)
+GUI for [rencfs](https://github.com/radumarias/rencfs)
 
 This is in very early stages, much more is to be implemented. Currently is working only on Linux, with plans to support macOS and Windows, Android and iOS in the future.
 
@@ -8,4 +8,4 @@ It uses:
 - [tonic](https://crates.io/crates/tonic) for gRPC communication between GUI and daemon
 - [diesel](https://crates.io/crates/diesel) with Sqlite for ORM
 
-![](https://github.com/radumarias/encrypted_fs_desktop/blob/main/demo.gif)
+![](https://github.com/radumarias/rencfs_desktop/blob/main/demo.gif)

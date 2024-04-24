@@ -1294,75 +1294,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "encryptedfs_desktop_common"
-version = "0.1.0"
-dependencies = [
- "diesel",
- "diesel_migrations",
- "directories",
- "dotenvy",
- "once_cell",
- "serde",
- "serde_json",
- "sysinfo",
- "thiserror",
- "tokio",
- "tonic",
- "tonic-types",
- "tracing",
- "tracing-appender",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "encryptedfs_desktop_daemon"
-version = "0.1.0"
-dependencies = [
- "daemonize",
- "diesel",
- "diesel_migrations",
- "directories",
- "dotenvy",
- "encryptedfs_desktop_common",
- "libc",
- "once_cell",
- "prost",
- "static_init",
- "thiserror",
- "tokio",
- "tonic",
- "tonic-build",
- "tonic-types",
- "tracing",
- "tracing-subscriber",
- "whoami",
-]
-
-[[package]]
-name = "encryptedfs_desktop_gui"
-version = "0.1.0"
-dependencies = [
- "diesel",
- "diesel_migrations",
- "directories",
- "dotenvy",
- "eframe",
- "egui",
- "egui-notify",
- "encryptedfs_desktop_common",
- "once_cell",
- "prost",
- "rfd",
- "static_init",
- "thiserror",
- "tokio",
- "tonic",
- "tonic-build",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "endi"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3096,6 +3027,75 @@ name = "regex-syntax"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "adad44e29e4c806119491a7f06f03de4d1af22c3a680dd47f1e6e179439d1f56"
+
+[[package]]
+name = "rencfs_desktop_common"
+version = "0.1.0"
+dependencies = [
+ "diesel",
+ "diesel_migrations",
+ "directories",
+ "dotenvy",
+ "once_cell",
+ "serde",
+ "serde_json",
+ "sysinfo",
+ "thiserror",
+ "tokio",
+ "tonic",
+ "tonic-types",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "rencfs_desktop_daemon"
+version = "0.1.0"
+dependencies = [
+ "daemonize",
+ "diesel",
+ "diesel_migrations",
+ "directories",
+ "dotenvy",
+ "libc",
+ "once_cell",
+ "prost",
+ "rencfs_desktop_common",
+ "static_init",
+ "thiserror",
+ "tokio",
+ "tonic",
+ "tonic-build",
+ "tonic-types",
+ "tracing",
+ "tracing-subscriber",
+ "whoami",
+]
+
+[[package]]
+name = "rencfs_desktop_gui"
+version = "0.1.0"
+dependencies = [
+ "diesel",
+ "diesel_migrations",
+ "directories",
+ "dotenvy",
+ "eframe",
+ "egui",
+ "egui-notify",
+ "once_cell",
+ "prost",
+ "rencfs_desktop_common",
+ "rfd",
+ "static_init",
+ "thiserror",
+ "tokio",
+ "tonic",
+ "tonic-build",
+ "tracing",
+ "tracing-subscriber",
+]
 
 [[package]]
 name = "renderdoc-sys"

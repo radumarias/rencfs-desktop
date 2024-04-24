@@ -1,9 +1,9 @@
 [workspace]
 
 members = [
-    "encryptedfs_desktop_gui",
-    "encryptedfs_desktop_daemon",
-    "encryptedfs_desktop_common",
+    "rencfs_desktop_gui",
+    "rencfs_desktop_daemon",
+    "rencfs_desktop_common",
 ]
 resolver = "2"
 

@@ -1,6 +1,7 @@
 extern crate daemonize;
 extern crate directories;
 
+use crate::vault_service::vault_service_server::VaultServiceServer;
 use std::backtrace::Backtrace;
 use std::thread;
 use std::fs::OpenOptions;
@@ -15,11 +16,10 @@ use tokio::task;
 use tonic::transport::Server;
 use tracing::{error, info, instrument};
 
-use encryptedfs_desktop_common::persistence::run_migrations;
-use encryptedfs_desktop_common::storage::{get_data_dir, get_logs_dir};
+use rencfs_desktop_common::persistence::run_migrations;
+use rencfs_desktop_common::storage::{get_data_dir, get_logs_dir};
 
 use crate::vault_service::MyVaultService;
-use crate::vault_service::vault_service_server::VaultServiceServer;
 
 mod vault_service;
 
@@ -29,7 +29,7 @@ pub(crate) static DEVMODE: Lazy<bool> = Lazy::new(|| dotenv().is_ok());
 async fn main() {
     if *DEVMODE {
         // TODO: take level from configs
-        let _guard = encryptedfs_desktop_common::log_init("DEBUG", "daemon");
+        let _guard = rencfs_desktop_common::log_init("DEBUG", "daemon");
 
         // in dev mode we don't want to daemonize so we can see logs in console and have debug
         run_in_daemon().await;
@@ -44,6 +44,9 @@ fn daemonize() {
     let uid = unsafe { libc::getuid() };
     let gid = unsafe { libc::getgid() };
     let username = whoami::username();
+
+    OpenOptions::new().append(true).create(true).open(logs_dir.join("daemon.out")).unwrap();
+    OpenOptions::new().append(true).create(true).open(logs_dir.join("daemon.err")).unwrap();
 
     let stdout = OpenOptions::new().write(true).append(true).open(logs_dir.join("daemon.out")).unwrap();
     let stderr = OpenOptions::new().write(true).append(true).open(logs_dir.join("daemon.err")).unwrap();
@@ -62,7 +65,7 @@ fn daemonize() {
             println!("Privileged action, my uid is: {}, my gid is: {}", uid, gid);
 
             // TODO: take level from configs
-            let _guard = encryptedfs_desktop_common::log_init("DEBUG", "daemon");
+            let _guard = rencfs_desktop_common::log_init("DEBUG", "daemon");
 
             let handle = thread::spawn(|| {
                 let rt = tokio::runtime::Runtime::new().unwrap();
@@ -112,7 +115,7 @@ pub async fn run_in_daemon() {
 
 #[instrument]
 async fn daemon_run_async() -> Result<(), Box<dyn std::error::Error>> {
-    let mut conn = encryptedfs_desktop_common::persistence::establish_connection().unwrap_or_else(|_| {
+    let mut conn = rencfs_desktop_common::persistence::establish_connection().unwrap_or_else(|_| {
         error!("Error connecting to database");
         panic!("Error connecting to database")
     });
@@ -123,9 +126,11 @@ async fn daemon_run_async() -> Result<(), Box<dyn std::error::Error>> {
     });
     let db_conn = Arc::new(Mutex::new(conn));
 
+    info!("Starting server");
     let addr = "[::1]:50051".parse()?;
     let service = MyVaultService::new(db_conn);
 
+    info!("Listening on {}", addr);
     Server::builder()
         .add_service(VaultServiceServer::new(service))
         .serve(addr)

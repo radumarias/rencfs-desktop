@@ -1,12 +1,12 @@
 [package]
-name = "encryptedfs_desktop_daemon"
+name = "rencfs_desktop_daemon"
 version = "0.1.0"
 edition.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-encryptedfs_desktop_common = { path = "../encryptedfs_desktop_common" }
+rencfs_desktop_common = { path = "../rencfs_desktop_common" }
 
 diesel = { workspace = true }
 diesel_migrations = { workspace = true }

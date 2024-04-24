@@ -7,13 +7,13 @@ use dotenvy::dotenv;
 use once_cell::sync::Lazy;
 use tracing::{error, instrument};
 
-use encryptedfs_desktop_common::persistence::run_migrations;
+use rencfs_desktop_common::persistence::run_migrations;
 use static_init::dynamic;
 use tokio::runtime::Runtime;
 use crate::dashboard::Dashboard;
 
 mod daemon_service {
-    tonic::include_proto!("encryptedfs_desktop");
+    tonic::include_proto!("rencfs_desktop");
 }
 
 mod dashboard;
@@ -31,7 +31,7 @@ pub(crate) static DEVMODE: Lazy<bool> = Lazy::new(|| dotenv().is_ok());
 
 #[dynamic]
 pub static DB_CONN: Mutex<SqliteConnection> = {
-    match encryptedfs_desktop_common::persistence::establish_connection() {
+    match rencfs_desktop_common::persistence::establish_connection() {
         Ok(db) => { Mutex::new(db) }
         Err(err) => {
             error!(err = %err, "Error connecting to database");
@@ -43,7 +43,7 @@ pub static DB_CONN: Mutex<SqliteConnection> = {
 #[instrument]
 fn main() {
     // TODO: take level from configs
-    let _guard = encryptedfs_desktop_common::log_init("DEBUG", "gui");
+    let _guard = rencfs_desktop_common::log_init("DEBUG", "gui");
 
     let res = catch_unwind(|| {
         run_main().expect("Error running app");
@@ -60,7 +60,7 @@ fn main() {
 
 #[instrument]
 fn run_main() -> Result<(), Box<dyn std::error::Error>> {
-    let conn = encryptedfs_desktop_common::persistence::establish_connection();
+    let conn = rencfs_desktop_common::persistence::establish_connection();
     let mut conn = conn.unwrap_or_else(|_| {
         error!("Error connecting to database");
         panic!("Error connecting to database")

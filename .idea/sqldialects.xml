@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="SqlDialectMappings">
-    <file url="file://$PROJECT_DIR$/encryptedfs_desktop_common/migrations/2024-04-15-002038_create_vaults/down.sql" dialect="SQLite" />
-    <file url="file://$PROJECT_DIR$/encryptedfs_desktop_common/migrations/2024-04-15-002038_create_vaults/up.sql" dialect="SQLite" />
-  </component>
-</project>

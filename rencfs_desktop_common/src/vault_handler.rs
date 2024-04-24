@@ -117,7 +117,7 @@ impl VaultHandler {
         };
 
         // spawn new process
-        let child = Command::new("/home/gnome/dev/RustroverProjects/encryptedfs/target/debug/encryptedfs")
+        let child = Command::new("/home/gnome/dev/RustroverProjects/rencfs/rencfs/target/debug/rencfs")
             // TODO get pass from keystore
             .env("ENCRYPTEDFS_PASSWORD", "pass-42")
             .stdout(stdout)

@@ -11,7 +11,7 @@ use eframe::emath::Align;
 use egui::{Frame, Layout, Ui};
 use egui_notify::Toasts;
 
-use encryptedfs_desktop_common::dao::VaultDao;
+use rencfs_desktop_common::dao::VaultDao;
 
 use crate::detail::ViewGroupDetail;
 use crate::ListView;
