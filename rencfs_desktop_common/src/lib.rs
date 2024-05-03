@@ -1,10 +1,7 @@
 use std::panic;
 use std::panic::UnwindSafe;
-use std::str::FromStr;
 
 use diesel_migrations::{embed_migrations, EmbeddedMigrations};
-use dotenvy::dotenv;
-use once_cell::sync::Lazy;
 use tracing::{error, instrument, Level};
 use tracing_appender::non_blocking::WorkerGuard;
 
@@ -19,15 +16,14 @@ pub mod storage;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
-pub(crate) static DEVMODE: Lazy<bool> = Lazy::new(|| dotenv().is_ok());
-
-pub fn log_init(level: &str, prefix: &str) -> WorkerGuard {
-    if *DEVMODE {
+pub fn log_init(level: Level, prefix: &str) -> WorkerGuard {
+    if is_debug() {
         // for dev mode print to stdout
         let (writer, guard) = tracing_appender::non_blocking(std::io::stdout());
         tracing_subscriber::fmt()
+            .pretty()
             .with_writer(writer)
-            .with_max_level(Level::from_str(level).unwrap())
+            .with_max_level(level)
             .init();
         guard
     } else {
@@ -36,7 +32,7 @@ pub fn log_init(level: &str, prefix: &str) -> WorkerGuard {
         let (file_writer, guard) = tracing_appender::non_blocking(file_appender);
         tracing_subscriber::fmt()
             .with_writer(file_writer)
-            .with_max_level(Level::from_str(level).unwrap())
+            .with_max_level(level)
             .init();
         guard
     }
@@ -52,4 +48,12 @@ pub async fn execute_catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) {
             panic!("{err:#?}");
         }
     }
+}
+
+#[allow(unreachable_code)]
+pub fn is_debug() -> bool {
+    #[cfg(debug_assertions)] {
+        return true;
+    }
+    return false;
 }

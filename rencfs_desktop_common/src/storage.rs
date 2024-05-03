@@ -4,7 +4,7 @@ use std::{fs, panic};
 use std::path::PathBuf;
 use std::str::FromStr;
 use crate::app_details::{APPLICATION, ORGANIZATION, QUALIFIER};
-use crate::DEVMODE;
+use crate::is_debug;
 
 #[instrument]
 pub fn get_project_dirs() -> ProjectDirs {
@@ -22,7 +22,7 @@ pub fn get_project_dirs() -> ProjectDirs {
 }
 
 pub fn get_config_dir() -> PathBuf {
-    if *DEVMODE {
+    if is_debug() {
         get_dev_data_dir()
     } else {
         get_project_dirs().config_local_dir().to_path_buf()
@@ -30,7 +30,7 @@ pub fn get_config_dir() -> PathBuf {
 }
 
 pub fn get_data_dir() -> PathBuf {
-    if *DEVMODE {
+    if is_debug() {
         get_dev_data_dir()
     } else {
         get_project_dirs().data_local_dir().to_path_buf()
@@ -38,7 +38,7 @@ pub fn get_data_dir() -> PathBuf {
 }
 
 pub fn get_logs_dir() -> PathBuf {
-    if *DEVMODE {
+    if is_debug() {
         get_dev_data_dir()
     } else {
         get_project_dirs().data_local_dir().join("logs")

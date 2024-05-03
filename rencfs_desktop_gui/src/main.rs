@@ -1,11 +1,11 @@
 use std::backtrace::Backtrace;
 use std::panic;
 use std::panic::catch_unwind;
+use std::str::FromStr;
 use std::sync::Mutex;
 use diesel::prelude::*;
 use dotenvy::dotenv;
-use once_cell::sync::Lazy;
-use tracing::{error, instrument};
+use tracing::{error, instrument, Level};
 
 use rencfs_desktop_common::persistence::run_migrations;
 use static_init::dynamic;
@@ -27,8 +27,6 @@ pub use listview::ListView;
 #[dynamic]
 pub(crate) static RT: Runtime = Runtime::new().expect("Cannot create tokio runtime");
 
-pub(crate) static DEVMODE: Lazy<bool> = Lazy::new(|| dotenv().is_ok());
-
 #[dynamic]
 pub static DB_CONN: Mutex<SqliteConnection> = {
     match rencfs_desktop_common::persistence::establish_connection() {
@@ -42,14 +40,17 @@ pub static DB_CONN: Mutex<SqliteConnection> = {
 
 #[instrument]
 fn main() {
+    let _ = dotenv();
+
     // TODO: take level from configs
-    let _guard = rencfs_desktop_common::log_init("DEBUG", "gui");
+    let log_level = Level::from_str("DEBUG").unwrap();
+    let _log_guard = rencfs_desktop_common::log_init(log_level, "gui");
 
     let res = catch_unwind(|| {
         run_main().expect("Error running app");
     });
     match res {
-        Ok(_) => println!("Program terminated successfully"),
+        Ok(_) => {},
         Err(err) => {
             error!("panic {err:#?}");
             error!(backtrace = %Backtrace::force_capture());

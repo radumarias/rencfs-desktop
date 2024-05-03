@@ -6,12 +6,12 @@ use diesel::migration::MigrationVersion;
 use diesel_migrations::MigrationHarness;
 use tracing::{info, instrument};
 
-use crate::{DEVMODE, MIGRATIONS};
+use crate::{is_debug, MIGRATIONS};
 use crate::storage::get_config_dir;
 
 pub fn establish_connection() -> ConnectionResult<SqliteConnection> {
     let database_url: String;
-    if *DEVMODE {
+    if is_debug() {
         database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     } else {
         database_url = get_config_dir().join("rencfs_desktop.db").to_str().unwrap().to_string()

@@ -1,35 +1,37 @@
 extern crate daemonize;
 extern crate directories;
 
-use crate::vault_service::vault_service_server::VaultServiceServer;
 use std::backtrace::Backtrace;
-use std::thread;
 use std::fs::OpenOptions;
 use std::panic::catch_unwind;
+use std::str::FromStr;
 use std::sync::Arc;
+use std::thread;
 
 use daemonize::Daemonize;
 use dotenvy::dotenv;
-use once_cell::sync::Lazy;
 use tokio::sync::Mutex;
 use tokio::task;
 use tonic::transport::Server;
-use tracing::{error, info, instrument};
+use tracing::{error, info, instrument, Level};
+use rencfs_desktop_common::is_debug;
 
 use rencfs_desktop_common::persistence::run_migrations;
 use rencfs_desktop_common::storage::{get_data_dir, get_logs_dir};
 
 use crate::vault_service::MyVaultService;
+use crate::vault_service::vault_service_server::VaultServiceServer;
 
 mod vault_service;
 
-pub(crate) static DEVMODE: Lazy<bool> = Lazy::new(|| dotenv().is_ok());
-
 #[tokio::main]
 async fn main() {
-    if *DEVMODE {
+    let _ = dotenv();
+
+    if is_debug() {
         // TODO: take level from configs
-        let _guard = rencfs_desktop_common::log_init("DEBUG", "daemon");
+        let log_level = Level::from_str("DEBUG").unwrap();
+        let _log_guard = rencfs_desktop_common::log_init(log_level, "daemon");
 
         // in dev mode we don't want to daemonize so we can see logs in console and have debug
         run_in_daemon().await;
@@ -65,7 +67,8 @@ fn daemonize() {
             println!("Privileged action, my uid is: {}, my gid is: {}", uid, gid);
 
             // TODO: take level from configs
-            let _guard = rencfs_desktop_common::log_init("DEBUG", "daemon");
+            let log_level = Level::from_str("DEBUG").unwrap();
+            let _log_guard = rencfs_desktop_common::log_init(log_level, "daemon");
 
             let handle = thread::spawn(|| {
                 let rt = tokio::runtime::Runtime::new().unwrap();
@@ -99,7 +102,7 @@ pub async fn run_in_daemon() {
         })
     }).await;
     match res {
-        Ok(Ok(_)) => println!("Program terminated successfully"),
+        Ok(Ok(_)) => {},
         Ok(Err(err)) => {
             error!("panic {err:#?}");
             error!(backtrace = %Backtrace::force_capture());

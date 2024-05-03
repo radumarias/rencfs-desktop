@@ -19,7 +19,6 @@ tracing-subscriber = { workspace = true }
 directories = { workspace = true }
 static_init = { workspace = true }
 thiserror = { workspace = true }
-once_cell = { workspace = true }
 
 eframe = "0.27.2"
 egui = "0.27.2"

@@ -13,6 +13,7 @@ use egui_notify::{Toast, Toasts};
 use tracing::instrument;
 
 use daemon_service::DaemonService;
+use rencfs_desktop_common::is_debug;
 use rencfs_desktop_common::models::NewVault;
 use rencfs_desktop_common::schema::vaults::{data_dir, mount_point, name};
 use rencfs_desktop_common::vault_service_error::VaultServiceError;
@@ -20,7 +21,6 @@ use rencfs_desktop_common::vault_service_error::VaultServiceError;
 use crate::daemon_service::EmptyReply;
 use crate::dashboard::{Item, UiReply};
 use crate::detail::db_service::DbService;
-use crate::DEVMODE;
 
 mod daemon_service;
 mod db_service;
@@ -169,7 +169,7 @@ impl eframe::App for ViewGroupDetail {
                             if self.id.is_some() && path.to_string_lossy() == self.data_dir.as_ref().unwrap().as_str() {
                                 customize_toast(self.toasts.error("you need to select a different path than existing one"));
                             } else {
-                                if !*DEVMODE && fs::read_dir(path.clone()).unwrap().count() > 0 {
+                                if !is_debug() && fs::read_dir(path.clone()).unwrap().count() > 0 {
                                     customize_toast(self.toasts.error("data dir must be empty"));
                                 } else {
                                     let path = path.display().to_string();
