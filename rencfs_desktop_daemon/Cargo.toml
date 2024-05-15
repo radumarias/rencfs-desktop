@@ -23,7 +23,7 @@ thiserror = { workspace = true }
 
 daemonize = "0.5.0"
 libc = "0.2.153"
-whoami = "=0.9.0"
+whoami = "=1.5.0"
 
 [build-dependencies]
 tonic-build = { workspace = true }
