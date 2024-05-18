@@ -1,6 +1,11 @@
 GUI for [rencfs](https://github.com/radumarias/rencfs)
 
-This is in very early stages, much more is to be implemented. Currently is working only on Linux, with plans to support macOS and Windows, Android and iOS in the future.
+> ⚠️ **Warning**
+> ***This is very early in development. Please do not use it with sensitive data just yet. Please wait for a
+stable release.
+> It's mostly ideal for experimental and learning projects.***
+
+Currently is working only on Linux, with plans to support macOS and Windows, Android and iOS in the future.
 
 It uses:
 - [egui](https://crates.io/crates/egui) with [eframe](https://crates.io/crates/eframe) for GUI
