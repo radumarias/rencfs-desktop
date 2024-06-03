@@ -1,6 +1,6 @@
 GUI for [rencfs](https://github.com/radumarias/rencfs)
 
-> ⚠️ **Warning**
+> [!WARNING]
 > ***This is very early in development. Please do not use it with sensitive data just yet. Please wait for a
 stable release.
 > It's mostly ideal for experimental and learning projects.***
