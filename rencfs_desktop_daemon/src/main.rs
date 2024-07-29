@@ -17,7 +17,7 @@ use tracing::{error, info, instrument, Level};
 use rencfs_desktop_common::is_debug;
 
 use rencfs_desktop_common::persistence::run_migrations;
-use rencfs_desktop_common::storage::{get_data_dir, get_logs_dir};
+use rencfs_desktop_common::directories::{get_data_dir, get_logs_dir};
 
 use crate::vault_service::MyVaultService;
 use crate::vault_service::vault_service_server::VaultServiceServer;

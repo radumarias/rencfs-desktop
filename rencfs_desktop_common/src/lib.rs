@@ -12,7 +12,7 @@ pub mod app_details;
 pub mod persistence;
 pub mod vault_service_error;
 pub mod vault_handler;
-pub mod storage;
+pub mod directories;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
@@ -28,7 +28,7 @@ pub fn log_init(level: Level, prefix: &str) -> WorkerGuard {
         guard
     } else {
         // for prod mode print to file
-        let file_appender = tracing_appender::rolling::daily(storage::get_logs_dir().to_str().unwrap(), format!("{}.log", prefix));
+        let file_appender = tracing_appender::rolling::daily(directories::get_logs_dir().to_str().unwrap(), format!("{}.log", prefix));
         let (file_writer, guard) = tracing_appender::non_blocking(file_appender);
         tracing_subscriber::fmt()
             .with_writer(file_writer)

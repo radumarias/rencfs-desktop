@@ -7,7 +7,7 @@ use diesel_migrations::MigrationHarness;
 use tracing::{info, instrument};
 
 use crate::{is_debug, MIGRATIONS};
-use crate::storage::get_config_dir;
+use crate::directories::get_config_dir;
 
 pub fn establish_connection() -> ConnectionResult<SqliteConnection> {
     let database_url: String;
