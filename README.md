@@ -1,4 +1,6 @@
-GUI for [rencfs](https://github.com/radumarias/rencfs)
+# rencfs-desktop
+
+GUI for [rencfs](https://github.com/radumarias/rencfs).
 
 > [!WARNING]
 > **This is very early in development. Please do not use it with sensitive data just yet. Please wait for a
