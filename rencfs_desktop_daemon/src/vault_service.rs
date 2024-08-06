@@ -13,7 +13,7 @@ use crate::vault_service::vault_service_server::VaultService;
 
 tonic::include_proto!("rencfs_desktop");
 
-pub struct MyVaultService{
+pub struct MyVaultService {
     handlers: Arc<Mutex<HashMap<u32, VaultHandler>>>,
     db_conn: Arc<Mutex<SqliteConnection>>,
 }
@@ -38,6 +38,10 @@ impl MyVaultService {
 
 #[tonic::async_trait]
 impl VaultService for MyVaultService {
+    async fn hello(&self, request: Request<HelloRequest>) -> Result<Response<HelloReply>, Status> {
+        Ok(Response::new(HelloReply { message: format!("Hello, {}!", request.into_inner().name) }))
+    }
+
     #[instrument(skip(self), err)]
     async fn lock(&self, request: Request<IdRequest>) -> Result<Response<EmptyReply>, Status> {
         let id = request.into_inner().id;

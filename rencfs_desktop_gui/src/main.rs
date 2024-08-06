@@ -29,6 +29,11 @@ pub(crate) static RT: Runtime = Runtime::new().expect("Cannot create tokio runti
 
 #[dynamic]
 pub static DB_CONN: Mutex<SqliteConnection> = {
+    let path = dotenv();
+    match path {
+        Ok(path) => println!("Loaded env file from {:?}", path),
+        Err(err) => eprintln!("Error loading env file: {:?}", err),
+    }
     match rencfs_desktop_common::persistence::establish_connection() {
         Ok(db) => { Mutex::new(db) }
         Err(err) => {
@@ -40,7 +45,11 @@ pub static DB_CONN: Mutex<SqliteConnection> = {
 
 #[instrument]
 fn main() {
-    let _ = dotenv();
+    let path = dotenv();
+    match path {
+        Ok(path) => println!("Loaded env file from {:?}", path),
+        Err(err) => eprintln!("Error loading env file: {:?}", err),
+    }
 
     // TODO: take level from configs
     let log_level = Level::from_str("DEBUG").unwrap();
@@ -50,7 +59,7 @@ fn main() {
         run_main().expect("Error running app");
     });
     match res {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(err) => {
             error!("panic {err:#?}");
             error!(backtrace = %Backtrace::force_capture());
@@ -90,7 +99,7 @@ pub fn start_ui(conn: SqliteConnection) -> Result<(), eframe::Error> {
         "EncryptedFS",
         options,
         Box::new(|_cc| {
-            Box::new(Dashboard::new(conn))
+            Ok(Box::new(Dashboard::new(conn)))
         }),
     )
 }

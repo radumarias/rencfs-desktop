@@ -10,7 +10,7 @@ use eframe::{egui, Frame};
 use eframe::egui::Context;
 use egui::{Button, ecolor, Widget};
 use egui_notify::{Toast, Toasts};
-use tracing::instrument;
+use tracing::{info, instrument};
 
 use daemon_service::DaemonService;
 use rencfs_desktop_common::is_debug;
@@ -18,7 +18,7 @@ use rencfs_desktop_common::models::NewVault;
 use rencfs_desktop_common::schema::vaults::{data_dir, mount_point, name};
 use rencfs_desktop_common::vault_service_error::VaultServiceError;
 
-use crate::daemon_service::EmptyReply;
+use crate::daemon_service::{EmptyReply, HelloReply};
 use crate::dashboard::{Item, UiReply};
 use crate::detail::db_service::DbService;
 
@@ -26,6 +26,7 @@ mod daemon_service;
 mod db_service;
 
 enum ServiceReply {
+    HelloReply(HelloReply),
     UnlockVaultReply(EmptyReply),
     LockVaultReply(EmptyReply),
     ChangeMountPoint(EmptyReply),
@@ -50,10 +51,19 @@ pub struct ViewGroupDetail {
     confirmation_delete_pending: bool,
 
     toasts: Toasts,
+
+    // todo:
+    // remove when this is implemented https://github.com/radumarias/rencfs-desktop/issues/14
+    // and call hello() when service is initialized
+    initialized: bool,
 }
 
 impl eframe::App for ViewGroupDetail {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
+        if !self.initialized {
+            self.daemon_service.hello("test");
+            self.initialized = true;
+        }
         let customize_toast_duration = |t: &mut Toast, seconds: u64| {
             let duration = Some(Duration::from_secs(seconds));
             t.set_closable(false)
@@ -85,6 +95,7 @@ impl eframe::App for ViewGroupDetail {
                 }
                 ServiceReply::VaultServiceError(err) => customize_toast(self.toasts.error(err.to_string())),
                 ServiceReply::Error(s) => customize_toast(self.toasts.error(s.clone())),
+                ServiceReply::HelloReply(s) => info!("HelloReply: {:?}", s),
             }
         }
 
@@ -287,6 +298,7 @@ impl ViewGroupDetail {
             daemon_service,
             db_service: DbService::new(None, tx_parent),
             toasts: Toasts::default(),
+            initialized: false,
         })
     }
 
@@ -311,6 +323,7 @@ impl ViewGroupDetail {
             daemon_service,
             db_service: DbService::new(Some(item.id), tx_parent),
             toasts: Toasts::default(),
+            initialized: false,
         })
     }
 

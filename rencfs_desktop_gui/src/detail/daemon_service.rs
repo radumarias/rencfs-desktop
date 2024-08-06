@@ -3,7 +3,7 @@ use tonic::{Response, Status};
 use tonic::transport::{Channel, Error};
 use tracing::{error, instrument};
 use rencfs_desktop_common::vault_service_error::VaultServiceError;
-use crate::daemon_service::{EmptyReply, IdRequest, StringIdRequest};
+use crate::daemon_service::{EmptyReply, HelloRequest, IdRequest, StringIdRequest};
 use crate::daemon_service::vault_service_client::VaultServiceClient;
 use crate::dashboard::UiReply;
 use crate::detail::ServiceReply;
@@ -26,6 +26,57 @@ impl DaemonService {
             .map_or_else(|err| {
                 Err(format!("failed to connect to daemon: {}", err.to_string()))
             }, |client| Ok(Self { id, tx_service, tx_parent, client }))
+    }
+
+    pub(super) fn hello(&mut self, name: &str) {
+        let tx = self.tx_service.clone();
+        let tx_parent = self.tx_parent.clone();
+        let mut client = self.client.clone();
+        let name = name.to_string();
+        RT.spawn(async move {
+            let request = tonic::Request::new(HelloRequest {
+                name,
+            });
+            match client.hello(request).await {
+                Ok(response) => {
+                    let _ = tx.send(ServiceReply::HelloReply(response.into_inner()))
+                        .map_err(|_| {
+                            // in case the component is destroyed before the response is received,
+                            // we will not be able
+                            // to notify service reply because the rx is closed
+                            // in that case notify parent with error because it's rx is still open
+                            let _ = tx_parent.send(UiReply::VaultUpdated(true));
+                        });
+                }
+                Err(err) => {
+                    let vault_service_error: Result<VaultServiceError, _> = err.clone().try_into();
+                    match vault_service_error {
+                        Ok(err2) => {
+                            error!(err2 = %err2);
+                            let _ = tx.send(ServiceReply::VaultServiceError(err2.clone()))
+                                .map_err(|_| {
+                                    // in case the component is destroyed before the response is received,
+                                    // we will not be able
+                                    // to notify service reply because the rx is closed
+                                    // in that case notify parent with error because it's rx is still open
+                                    let _ = tx_parent.send(UiReply::Error(err2.to_string()));
+                                });
+                        }
+                        _ => {
+                            error!(err = %err);
+                            let res = tx.send(ServiceReply::Error(format!("Error: {}", err)));
+                            if let Err(err) = res {
+                                // in case the component is destroyed before the response is received,
+                                // we will not be able
+                                // to notify service reply because the rx is closed
+                                // in that case notify parent with error because it's rx is still open
+                                let _ = tx_parent.send(UiReply::Error(err.to_string()));
+                            }
+                        }
+                    }
+                }
+            }
+        });
     }
 
     pub(super) fn unlock_vault(&mut self) {
@@ -89,8 +140,10 @@ impl DaemonService {
             Ok(response) => {
                 let _ = tx.send(f(response.into_inner()))
                     .map_err(|_| {
-                        // in case the component is destroyed before the response is received we will not be able to notify service reply because the rx is closed
-                        // in that case notify parent for update because it's rx is still open
+                        // in case the component is destroyed before the response is received,
+                        // we will not be able
+                        // to notify service reply because the rx is closed
+                        // in that case notify parent with error because it's rx is still open
                         let _ = tx_parent.send(UiReply::VaultUpdated(true));
                     });
             }
@@ -101,7 +154,9 @@ impl DaemonService {
                         error!(err2 = %err2);
                         let _ = tx.send(ServiceReply::VaultServiceError(err2.clone()))
                             .map_err(|_| {
-                                // in case the component is destroyed before the response is received we will not be able to notify service reply because the rx is closed
+                                // in case the component is destroyed before the response is received,
+                                // we will not be able
+                                // to notify service reply because the rx is closed
                                 // in that case notify parent with error because it's rx is still open
                                 let _ = tx_parent.send(UiReply::Error(err2.to_string()));
                             });
@@ -110,7 +165,9 @@ impl DaemonService {
                         error!(err = %err);
                         let res = tx.send(ServiceReply::Error(format!("Error: {}", err)));
                         if let Err(err) = res {
-                            // in case the component is destroyed before the response is received we will not be able to notify service reply because the rx is closed
+                            // in case the component is destroyed before the response is received,
+                            // we will not be able
+                            // to notify service reply because the rx is closed
                             // in that case notify parent with error because it's rx is still open
                             let _ = tx_parent.send(UiReply::Error(err.to_string()));
                         }
@@ -121,12 +178,14 @@ impl DaemonService {
     }
 
     async fn create_client(tx: Sender<ServiceReply>, tx_parent: Sender<UiReply>) -> Result<VaultServiceClient<Channel>, Error> {
-        // TODO: resolve port dynamically
+        // TODO: https://github.com/radumarias/rencfs-desktop/issues/13
         VaultServiceClient::connect("http://[::1]:50051").await
             .map_err(|err| {
-                let _ = tx.send(ServiceReply::Error(err.to_string()))
+                let _ = tx.send(ServiceReply::Error(format!("{err:?}")))
                     .map_err(|err| {
-                        // in case the component is destroyed before the response is received we will not be able to notify service reply because the rx is closed
+                        // in case the component is destroyed before the response is received,
+                        // we will not be able
+                        // to notify service reply because the rx is closed
                         // in that case notify parent with error because it's rx is still open
                         let _ = tx_parent.send(UiReply::Error(err.to_string()));
                     });

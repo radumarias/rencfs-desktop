@@ -12,9 +12,9 @@ use daemonize::Daemonize;
 use dotenvy::dotenv;
 use tokio::sync::Mutex;
 use tokio::task;
-use tonic::transport::Server;
 use tracing::{error, info, instrument, Level};
 use rencfs_desktop_common::is_debug;
+use tonic::transport::Server;
 
 use rencfs_desktop_common::persistence::run_migrations;
 use rencfs_desktop_common::directories::{get_data_dir, get_logs_dir};
@@ -26,7 +26,11 @@ mod vault_service;
 
 #[tokio::main]
 async fn main() {
-    let _ = dotenv();
+    let path = dotenv();
+    match path {
+        Ok(path) => println!("Loaded env file from {:?}", path),
+        Err(err) => eprintln!("Error loading env file: {:?}", err),
+    }
 
     if is_debug() {
         // TODO: take level from configs
@@ -102,7 +106,7 @@ pub async fn run_in_daemon() {
         })
     }).await;
     match res {
-        Ok(Ok(_)) => {},
+        Ok(Ok(_)) => {}
         Ok(Err(err)) => {
             error!("panic {err:#?}");
             error!(backtrace = %Backtrace::force_capture());
@@ -132,10 +136,12 @@ async fn daemon_run_async() -> Result<(), Box<dyn std::error::Error>> {
     info!("Starting server");
     let addr = "[::1]:50051".parse()?;
     let service = MyVaultService::new(db_conn);
+    let service = VaultServiceServer::new(service);
 
     info!("Listening on {}", addr);
     Server::builder()
-        .add_service(VaultServiceServer::new(service))
+        // GrpcWeb is over http1 so we must enable it.
+        .add_service(service)
         .serve(addr)
         .await?;
 

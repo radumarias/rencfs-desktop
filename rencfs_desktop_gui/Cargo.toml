@@ -20,10 +20,10 @@ directories = { workspace = true }
 static_init = { workspace = true }
 thiserror = { workspace = true }
 
-eframe = "0.27.2"
-egui = "0.27.2"
+eframe = "0.28.1"
+egui = "0.28.1"
 rfd = "0.14.1"
-egui-notify = "0.14.0"
+egui-notify = "0.15.0"
 
 [build-dependencies]
 tonic-build = { workspace = true }

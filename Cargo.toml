@@ -15,9 +15,10 @@ exclude = [".github/"]
 diesel = { version = "2.1.5", features = ["sqlite"] }
 diesel_migrations = "2.1.0"
 dotenvy = "0.15.7"
-tonic = "0.11"
-tonic-types = "0.11.0"
-prost = "0.12.4"
+tonic = "0.12.1"
+tonic-types = "0.12.1"
+tonic-health = "0.12.1"
+prost = "0.13.1"
 tokio = { version = "1.37.0", features = ["macros", "rt-multi-thread", "process"] }
 tracing = {version = "0.1.40", features = ["max_level_trace", "release_max_level_info"]}
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
@@ -30,4 +31,4 @@ serde_json = "1.0.116"
 sysinfo = "0.30.11"
 
 # build-dependencies
-tonic-build = "0.11"
+tonic-build = "0.12.1"

@@ -13,6 +13,7 @@ diesel_migrations = { workspace = true }
 dotenvy = { workspace = true }
 tonic = { workspace = true }
 tonic-types = { workspace = true }
+tonic-health = { workspace = true }
 prost = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }

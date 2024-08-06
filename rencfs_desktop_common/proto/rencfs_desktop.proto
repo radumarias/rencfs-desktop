@@ -2,12 +2,21 @@ syntax = "proto3";
 package rencfs_desktop;
 
 service VaultService {
+  rpc hello (HelloRequest) returns (HelloReply);
   rpc Lock (IdRequest) returns (EmptyReply);
   rpc Unlock (IdRequest) returns (EmptyReply);
   // request contains old mount point, the new one is already in db
   rpc ChangeMountPoint (StringIdRequest) returns (EmptyReply);
   // request contains old data dir, the new one is already in db
   rpc ChangeDataDir (StringIdRequest) returns (EmptyReply);
+}
+
+message HelloRequest {
+  string name = 1;
+}
+
+message HelloReply {
+  string message = 1;
 }
 
 message IdRequest {

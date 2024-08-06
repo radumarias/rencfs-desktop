@@ -65,7 +65,7 @@ impl VaultHandler {
         // for some reason of we use 'kill' method the child process doesn't receive the SIGKILL signal
         // for that case we use `umount` command
         // TODO: umount for windows
-        if cfg!(any(linux, unix, macos, freebsd, openbsd, netbsd)) {
+        if cfg!(any(target_os = "linux", target_os = "macos")) {
             let mount_point = if let Some(mount_point) = mount_point {
                 mount_point
             } else {
@@ -155,7 +155,7 @@ impl VaultHandler {
                 } else {
                     // try to check if it's defunct with ps command
                     // TODO: ps for windows
-                    if cfg!(any(linux, unix, macos, freebsd, openbsd, netbsd)) {
+                    if cfg!(any(target_os = "linux", target_os = "macos")) {
                         let out = Command::new("ps")
                             .arg("-f")
                             .arg(child.id().unwrap().to_string())
@@ -174,12 +174,12 @@ impl VaultHandler {
         }
         if is_defunct {
             // TODO: kill for windows
-            if cfg!(any(linux, unix, macos, freebsd, openbsd, netbsd)) {
+            // if cfg!(any(linux, unix, macos)) {
                 process::Command::new("kill")
                     .arg(child.id().unwrap().to_string())
                     .output()
                     .expect("Cannot kill process");
-            }
+            // }
             return Err(VaultHandlerError::CannotUnlockVault.into());
         }
 
