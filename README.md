@@ -16,3 +16,12 @@ It uses:
 - [diesel](https://crates.io/crates/diesel) with Sqlite for ORM
 
 ![](https://github.com/radumarias/rencfs_desktop/blob/main/demo.gif)
+
+# Contribute
+
+Feel free to fork it, change and use it in any way that you want.
+If you build something interesting and feel like sharing pull requests are always appreciated.
+
+## How to contribute
+
+Please see [CONTRIBUTING.md](CONTRIBUTING.md).
