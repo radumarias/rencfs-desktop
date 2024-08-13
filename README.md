@@ -17,6 +17,9 @@ It uses:
 
 ![](https://github.com/radumarias/rencfs_desktop/blob/main/demo.gif)
 
+Video  
+[![Watch the video](https://img.youtube.com/vi/MkWMS3Qmk1I/0.jpg)](https://youtu.be/MkWMS3Qmk1I)
+
 # Contribute
 
 Feel free to fork it, change and use it in any way that you want.
