@@ -119,7 +119,7 @@ impl VaultHandler {
         // spawn new process
         let child = Command::new("/home/gnome/dev/RustroverProjects/rencfs/rencfs/target/debug/rencfs")
             // TODO get pass from keystore
-            .env("ENCRYPTEDFS_PASSWORD", "pass-42")
+            .env("RENCFS_PASSWORD", "a")
             .stdout(stdout)
             .stderr(stderr)
             .arg("--mount-point")
@@ -127,6 +127,7 @@ impl VaultHandler {
             .arg("--data-dir")
             .arg(&vault.data_dir)
             .arg("--umount-on-start")
+            .arg("-u")
             .spawn();
         let child = match child {
             Ok(child) => child,
