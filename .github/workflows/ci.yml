@@ -14,19 +14,14 @@ env:
   CARGO_INCREMENTAL: 0 # TODO: remove this when we cache the builds
   
 jobs:
-  tests:
-    name: build and tests
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ ubuntu-latest, windows-latest ]
-      fail-fast: true    
+  build-test-package:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: install deps
-        run: sudo apt-get install protobuf-compiler
-
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+  
       - name: setup Rust
         run: |
           rustup update
