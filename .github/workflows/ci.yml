@@ -24,6 +24,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: install deps
+        run: apt-get install protobuf-compiler
+
       - name: setup Rust
         run: |
           rustup update
@@ -46,23 +49,6 @@ jobs:
 
       - name: doc
         run: cargo doc --workspace --all-features --no-deps
-
-  package:
-    name: package
-    needs: [tests]
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ ubuntu-latest, macos-latest, windows-latest ]
-      fail-fast: true    
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: setup Rust
-        run: |
-          rustup update
-          cargo install cargo-aur
-          cargo install cargo-generate-rpm          
 
       - name: package
         run: |
