@@ -1,6 +1,6 @@
 use crate::detail::ViewGroupDetail;
 
-pub(crate) enum State{
+pub(crate) enum State {
     Detail(ViewGroupDetail),
 }
 

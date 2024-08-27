@@ -1,14 +1,14 @@
-use std::{fs, sync};
 use std::sync::mpsc::Sender;
 use std::time::Duration;
+use std::{fs, sync};
 use sync::mpsc::Receiver;
 
-use diesel::{ExpressionMethods, QueryResult};
 use diesel::result::DatabaseErrorKind::UniqueViolation;
 use diesel::result::Error::DatabaseError;
-use eframe::{egui, Frame};
+use diesel::{ExpressionMethods, QueryResult};
 use eframe::egui::Context;
-use egui::{Button, ecolor, Widget};
+use eframe::{egui, Frame};
+use egui::{ecolor, Button, Widget};
 use egui_notify::{Toast, Toasts};
 use tracing::{info, instrument};
 
@@ -93,7 +93,9 @@ impl eframe::App for ViewGroupDetail {
                     self.db_reload();
                     customize_toast(self.toasts.success("data dir changed"));
                 }
-                ServiceReply::VaultServiceError(err) => customize_toast(self.toasts.error(err.to_string())),
+                ServiceReply::VaultServiceError(err) => {
+                    customize_toast(self.toasts.error(err.to_string()))
+                }
                 ServiceReply::Error(s) => customize_toast(self.toasts.error(s.clone())),
                 ServiceReply::HelloReply(s) => info!("HelloReply: {:?}", s),
             }
@@ -305,7 +307,8 @@ impl ViewGroupDetail {
     #[instrument(name = "ViewGroupDetail", skip(tx_parent), err)]
     pub fn new_by_item(item: Item, tx_parent: Sender<UiReply>) -> Result<Self, String> {
         let (tx_service, rx_service) = sync::mpsc::channel::<ServiceReply>();
-        let daemon_service = DaemonService::new(Some(item.id), tx_service.clone(), tx_parent.clone());
+        let daemon_service =
+            DaemonService::new(Some(item.id), tx_service.clone(), tx_parent.clone());
         if let Err(err) = daemon_service {
             return Err(err);
         }

@@ -1,12 +1,12 @@
-use std::sync::mpsc::Sender;
-use diesel::{AsChangeset, QueryResult};
+use crate::dashboard::UiReply;
+use crate::DB_CONN;
 use diesel::query_builder::QueryFragment;
 use diesel::sqlite::Sqlite;
+use diesel::{AsChangeset, QueryResult};
 use rencfs_desktop_common::dao::VaultDao;
 use rencfs_desktop_common::models::{NewVault, Vault};
 use rencfs_desktop_common::schema::vaults::dsl::vaults;
-use crate::dashboard::UiReply;
-use crate::DB_CONN;
+use std::sync::mpsc::Sender;
 
 pub(super) struct DbService {
     id: Option<i32>,
@@ -25,7 +25,9 @@ impl DbService {
     }
 
     pub(super) fn update<V>(&self, v: V)
-        where V: AsChangeset<Target=vaults>, <V as AsChangeset>::Changeset: QueryFragment<Sqlite>
+    where
+        V: AsChangeset<Target = vaults>,
+        <V as AsChangeset>::Changeset: QueryFragment<Sqlite>,
     {
         let mut lock = DB_CONN.lock().unwrap();
         let mut dao = VaultDao::new(&mut lock);

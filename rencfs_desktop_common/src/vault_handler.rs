@@ -1,5 +1,5 @@
-use std::process;
 use std::fs::OpenOptions;
+use std::process;
 use std::sync::Arc;
 
 use diesel::{QueryResult, SqliteConnection};
@@ -33,7 +33,11 @@ pub struct VaultHandler {
 
 impl VaultHandler {
     pub fn new(id: u32, db_conn: Arc<Mutex<SqliteConnection>>) -> Self {
-        Self { id, child: None, db_conn }
+        Self {
+            id,
+            child: None,
+            db_conn,
+        }
     }
 
     #[instrument(skip(self), fields(self.id), err)]
@@ -79,9 +83,7 @@ impl VaultHandler {
                     }
                 }
             };
-            if let Err(_) = process::Command::new("umount")
-                .arg(&mount_point)
-                .output() {
+            if let Err(_) = process::Command::new("umount").arg(&mount_point).output() {
                 error!(mount_point, "Cannot umount");
                 return Err(VaultHandlerError::CannotLockVault.into());
             }
@@ -101,8 +103,16 @@ impl VaultHandler {
 
         // create logs files
         let logs_dir = get_logs_dir();
-        let stdout = OpenOptions::new().append(true).create(true).open(logs_dir.join(format!("vault_{}.out", self.id))).expect("Cannot create stdout file");
-        let stderr = OpenOptions::new().append(true).create(true).open(logs_dir.join(format!("vault_{}.err", self.id))).expect("Cannot create stderr file");
+        let stdout = OpenOptions::new()
+            .append(true)
+            .create(true)
+            .open(logs_dir.join(format!("vault_{}.out", self.id)))
+            .expect("Cannot create stdout file");
+        let stderr = OpenOptions::new()
+            .append(true)
+            .create(true)
+            .open(logs_dir.join(format!("vault_{}.err", self.id)))
+            .expect("Cannot create stderr file");
 
         let vault = {
             let mut guard = self.db_conn.lock().await;
@@ -117,18 +127,19 @@ impl VaultHandler {
         };
 
         // spawn new process
-        let child = Command::new("/home/gnome/dev/RustroverProjects/rencfs/rencfs/target/debug/rencfs")
-            // TODO get pass from keystore
-            .env("RENCFS_PASSWORD", "a")
-            .stdout(stdout)
-            .stderr(stderr)
-            .arg("--mount-point")
-            .arg(&vault.mount_point)
-            .arg("--data-dir")
-            .arg(&vault.data_dir)
-            .arg("--umount-on-start")
-            .arg("-u")
-            .spawn();
+        let child =
+            Command::new("/home/gnome/dev/RustroverProjects/rencfs/rencfs/target/debug/rencfs")
+                // TODO get pass from keystore
+                .env("RENCFS_PASSWORD", "a")
+                .stdout(stdout)
+                .stderr(stderr)
+                .arg("--mount-point")
+                .arg(&vault.mount_point)
+                .arg("--data-dir")
+                .arg(&vault.data_dir)
+                .arg("--umount-on-start")
+                .arg("-u")
+                .spawn();
         let child = match child {
             Ok(child) => child,
             Err(err) => {
@@ -148,9 +159,10 @@ impl VaultHandler {
         match sys.process(Pid::from_u32(child.id().unwrap())) {
             Some(process) => {
                 println!("{:?}", process.status());
-                if process.status() == ProcessStatus::Dead ||
-                    process.status() == ProcessStatus::Zombie ||
-                    process.status() == ProcessStatus::Stop {
+                if process.status() == ProcessStatus::Dead
+                    || process.status() == ProcessStatus::Zombie
+                    || process.status() == ProcessStatus::Stop
+                {
                     warn!("Process is dead or zombie, killing it");
                     is_defunct = true;
                 } else {
@@ -160,26 +172,30 @@ impl VaultHandler {
                         let out = Command::new("ps")
                             .arg("-f")
                             .arg(child.id().unwrap().to_string())
-                            .output().await
+                            .output()
+                            .await
                             .expect("Cannot run ps command");
-                        String::from_utf8(out.stdout).unwrap().lines().for_each(|line| {
-                            if line.contains("defunct") {
-                                warn!("Process is defunct, killing it");
-                                is_defunct = true;
-                            }
-                        });
+                        String::from_utf8(out.stdout)
+                            .unwrap()
+                            .lines()
+                            .for_each(|line| {
+                                if line.contains("defunct") {
+                                    warn!("Process is defunct, killing it");
+                                    is_defunct = true;
+                                }
+                            });
                     }
                 }
             }
-            None => return Err(VaultHandlerError::CannotUnlockVault.into())
+            None => return Err(VaultHandlerError::CannotUnlockVault.into()),
         }
         if is_defunct {
             // TODO: kill for windows
             // if cfg!(any(linux, unix, macos)) {
-                process::Command::new("kill")
-                    .arg(child.id().unwrap().to_string())
-                    .output()
-                    .expect("Cannot kill process");
+            process::Command::new("kill")
+                .arg(child.id().unwrap().to_string())
+                .output()
+                .expect("Cannot kill process");
             // }
             return Err(VaultHandlerError::CannotUnlockVault.into());
         }
@@ -200,7 +216,10 @@ impl VaultHandler {
     }
 
     #[instrument(skip(self), fields(self.id), err)]
-    pub async fn change_mount_point(&mut self, old_mount_point: String) -> Result<(), VaultHandlerError> {
+    pub async fn change_mount_point(
+        &mut self,
+        old_mount_point: String,
+    ) -> Result<(), VaultHandlerError> {
         info!("");
 
         let unlocked = self.child.is_some();

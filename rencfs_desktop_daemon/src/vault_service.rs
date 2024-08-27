@@ -26,12 +26,12 @@ impl MyVaultService {
         }
     }
 
-    async fn handle_handler_empty_response(response: Result<(), VaultHandlerError>) -> Result<Response<EmptyReply>, Status> {
+    async fn handle_handler_empty_response(
+        response: Result<(), VaultHandlerError>,
+    ) -> Result<Response<EmptyReply>, Status> {
         match response {
             Ok(_) => Ok(Response::new(EmptyReply {})),
-            Err(err) => {
-                Err(VaultServiceError::from(err).into())
-            }
+            Err(err) => Err(VaultServiceError::from(err).into()),
         }
     }
 }
@@ -39,7 +39,9 @@ impl MyVaultService {
 #[tonic::async_trait]
 impl VaultService for MyVaultService {
     async fn hello(&self, request: Request<HelloRequest>) -> Result<Response<HelloReply>, Status> {
-        Ok(Response::new(HelloReply { message: format!("Hello, {}!", request.into_inner().name) }))
+        Ok(Response::new(HelloReply {
+            message: format!("Hello, {}!", request.into_inner().name),
+        }))
     }
 
     #[instrument(skip(self), err)]
@@ -48,7 +50,9 @@ impl VaultService for MyVaultService {
         info!(id, "Vault lock request received");
 
         let mut handlers = self.handlers.lock().await;
-        let handler = handlers.entry(id).or_insert_with(|| VaultHandler::new(id, self.db_conn.clone()));
+        let handler = handlers
+            .entry(id)
+            .or_insert_with(|| VaultHandler::new(id, self.db_conn.clone()));
 
         return MyVaultService::handle_handler_empty_response(handler.lock(None).await).await;
     }
@@ -59,32 +63,50 @@ impl VaultService for MyVaultService {
         info!(id, "Vault unlock request received");
 
         let mut handlers = self.handlers.lock().await;
-        let handler = handlers.entry(id).or_insert_with(|| VaultHandler::new(id, self.db_conn.clone()));
+        let handler = handlers
+            .entry(id)
+            .or_insert_with(|| VaultHandler::new(id, self.db_conn.clone()));
 
         return MyVaultService::handle_handler_empty_response(handler.unlock().await).await;
     }
 
     #[instrument(skip(self), err)]
-    async fn change_mount_point(&self, request: Request<StringIdRequest>) -> Result<Response<EmptyReply>, Status> {
+    async fn change_mount_point(
+        &self,
+        request: Request<StringIdRequest>,
+    ) -> Result<Response<EmptyReply>, Status> {
         let request = request.into_inner();
         let id = request.id;
         info!(id, "Vault change mount point request received");
 
         let mut handlers = self.handlers.lock().await;
-        let handler = handlers.entry(id).or_insert_with(|| VaultHandler::new(id, self.db_conn.clone()));
+        let handler = handlers
+            .entry(id)
+            .or_insert_with(|| VaultHandler::new(id, self.db_conn.clone()));
 
-        return MyVaultService::handle_handler_empty_response(handler.change_mount_point(request.value).await).await;
+        return MyVaultService::handle_handler_empty_response(
+            handler.change_mount_point(request.value).await,
+        )
+        .await;
     }
 
     #[instrument(skip(self), err)]
-    async fn change_data_dir(&self, request: Request<StringIdRequest>) -> Result<Response<EmptyReply>, Status> {
+    async fn change_data_dir(
+        &self,
+        request: Request<StringIdRequest>,
+    ) -> Result<Response<EmptyReply>, Status> {
         let request = request.into_inner();
         let id = request.id;
         info!(id, "Vault change data dir request received");
 
         let mut handlers = self.handlers.lock().await;
-        let handler = handlers.entry(id).or_insert_with(|| VaultHandler::new(id, self.db_conn.clone()));
+        let handler = handlers
+            .entry(id)
+            .or_insert_with(|| VaultHandler::new(id, self.db_conn.clone()));
 
-        return MyVaultService::handle_handler_empty_response(handler.change_data_dir(request.value).await).await;
+        return MyVaultService::handle_handler_empty_response(
+            handler.change_data_dir(request.value).await,
+        )
+        .await;
     }
 }

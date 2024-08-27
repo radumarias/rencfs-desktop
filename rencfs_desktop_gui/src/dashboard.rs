@@ -3,10 +3,10 @@ use std::sync;
 use std::sync::RwLock;
 
 use diesel::SqliteConnection;
+use eframe::egui;
 use eframe::egui::{
     CentralPanel, Color32, Context, FontId, Margin, RichText, SidePanel, TopBottomPanel,
 };
-use eframe::egui;
 use eframe::emath::Align;
 use egui::{Frame, Layout, Ui};
 use egui_notify::Toasts;
@@ -14,10 +14,10 @@ use egui_notify::Toasts;
 use rencfs_desktop_common::dao::VaultDao;
 
 use crate::detail::ViewGroupDetail;
-use crate::ListView;
 use crate::listview::r#trait::ItemTrait;
 use crate::listview::state::State;
 use crate::util::customize_toast;
+use crate::ListView;
 
 static CURRENT_VAULT_ITEM: RwLock<Option<Item>> = RwLock::new(None);
 static CURRENT_VAULT_ID: RwLock<Option<i32>> = RwLock::new(None);
@@ -47,7 +47,11 @@ impl ItemTrait for Item {
     }
 
     fn style_clicked(&self, frame: &mut Frame) {
-        frame.fill = if self.locked { Color32::DARK_GRAY } else { Color32::DARK_GREEN };
+        frame.fill = if self.locked {
+            Color32::DARK_GRAY
+        } else {
+            Color32::DARK_GREEN
+        };
     }
 
     fn show(
@@ -63,11 +67,15 @@ impl ItemTrait for Item {
                 ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                     ui.set_min_height(42.0);
 
-                    ui.label(RichText::new(if self.locked {
-                        format!("🔒 {}", self.name)
-                    } else {
-                        format!("🔓 {}", self.name)
-                    }).size(20.0).strong());
+                    ui.label(
+                        RichText::new(if self.locked {
+                            format!("🔒 {}", self.name)
+                        } else {
+                            format!("🔓 {}", self.name)
+                        })
+                        .size(20.0)
+                        .strong(),
+                    );
                 });
                 ui.with_layout(Layout::right_to_left(Align::Center), |_ui| {});
             });
@@ -125,15 +133,17 @@ impl Dashboard {
 
     fn load_items(&mut self) -> Vec<Item> {
         let mut dao = VaultDao::new(&mut self.conn);
-        dao.get_all(None).unwrap().iter().map(|v| {
-            Item {
+        dao.get_all(None)
+            .unwrap()
+            .iter()
+            .map(|v| Item {
                 id: v.id,
                 name: v.name.clone(),
                 mount_point: v.mount_point.clone(),
                 data_dir: v.data_dir.clone(),
                 locked: if v.locked == 1 { true } else { false },
-            }
-        }).collect()
+            })
+            .collect()
     }
 }
 
@@ -211,11 +221,11 @@ impl eframe::App for Dashboard {
                                 }
                             }
                             if CURRENT_VAULT_ITEM.read().unwrap().is_some() {
-                                list_view = list_view.selected_item(CURRENT_VAULT_ITEM.read().unwrap().as_ref().unwrap().id(()));
+                                list_view = list_view.selected_item(
+                                    CURRENT_VAULT_ITEM.read().unwrap().as_ref().unwrap().id(()),
+                                );
                             }
-                            list_view
-                                .striped()
-                                .show(ctx, ui);
+                            list_view.striped().show(ctx, ui);
                             if CURRENT_VAULT_ITEM.read().unwrap().is_some() {
                                 let mut writer = CURRENT_VAULT_ITEM.write().unwrap();
                                 if let Some(item) = std::mem::take(&mut *writer) {
@@ -239,9 +249,10 @@ impl eframe::App for Dashboard {
             };
             CentralPanel::default().show(ctx, |ui| {
                 ui.centered_and_justified(|ui| {
-                    ui.label(RichText::new(text)
-                                 .font(FontId::proportional(20.0))
-                                 .color(Color32::GRAY),
+                    ui.label(
+                        RichText::new(text)
+                            .font(FontId::proportional(20.0))
+                            .color(Color32::GRAY),
                     )
                 });
             });
