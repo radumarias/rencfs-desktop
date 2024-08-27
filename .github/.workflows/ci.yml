@@ -1,0 +1,68 @@
+name: ci
+on:
+  push:
+    branches: [ main, release ]
+  pull_request:
+    branches: [ main, release ]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  RUSTDOCFLAGS: "-Dwarnings"
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0 # TODO: remove this when we cache the builds
+  
+jobs:
+  tests:
+    name: build and tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
+      fail-fast: true    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup Rust
+        run: |
+          rustup update
+          cargo install cargo-aur
+          cargo install cargo-generate-rpm          
+
+      - name: build
+        run: |
+          cargo build --all-targets --all-features
+          cargo build --release --all-targets --all-features
+
+      - name: fmt check
+        run: cargo fmt --all -- --check
+
+      - name: check
+        run: cargo check --all
+
+      - name: tests
+        run: cargo test --release --all --all-features
+
+      - name: doc
+        run: cargo doc --workspace --all-features --no-deps
+
+  package:
+    name: build and tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
+      fail-fast: true    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup Rust
+        run: |
+          rustup update
+          cargo install cargo-aur
+          cargo install cargo-generate-rpm          
+
+      - name: package
+        run: |
+          cargo build --release
