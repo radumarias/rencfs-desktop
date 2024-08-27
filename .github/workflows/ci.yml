@@ -48,7 +48,8 @@ jobs:
         run: cargo doc --workspace --all-features --no-deps
 
   package:
-    name: build and tests
+    name: package
+    needs: [tests]
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
