@@ -57,26 +57,26 @@ jobs:
         if: ${{ !startsWith(matrix.runner, 'windows') }}
         uses: actions/upload-artifact@v4
         with:
-          name: rencfs_desktop_daemon_${{ matrix.runner }}
+          name: rencfs_desktop_daemon_${{ matrix.os }}
           path: target/release/rencfs_desktop_daemon
   
       - name: upload binary
         if: startsWith(matrix.runner, 'windows')
         uses: actions/upload-artifact@v4
         with:
-          name: recnfs_desktop_daemon_${{ matrix.runner }}
+          name: recnfs_desktop_daemon_${{ matrix.os }}
           path: target/release/rencfs_desktop_daemon.exe
 
       - name: upload binary
         if: ${{ !startsWith(matrix.runner, 'windows') }}
         uses: actions/upload-artifact@v4
         with:
-          name: rencfs_desktop_gui_${{ matrix.runner }}
+          name: rencfs_desktop_gui_${{ matrix.os }}
           path: target/release/rencfs_desktop_gui
   
       - name: upload binary
         if: startsWith(matrix.runner, 'windows')
         uses: actions/upload-artifact@v4
         with:
-          name: rencfs_desktop_gui_${{ matrix.runner }}
+          name: rencfs_desktop_gui_${{ matrix.os }}
           path: target/release/rencfs_desktop_gui.exe
