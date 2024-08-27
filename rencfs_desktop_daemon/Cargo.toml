@@ -22,6 +22,7 @@ directories = { workspace = true }
 static_init = { workspace = true }
 thiserror = { workspace = true }
 
+[target.'cfg(target_os = "linux")'.dependencies]
 daemonize = "0.5.0"
 libc = "0.2.153"
 whoami = "=1.5.0"

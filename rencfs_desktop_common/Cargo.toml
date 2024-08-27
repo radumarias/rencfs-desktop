@@ -20,6 +20,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }
 sysinfo = { workspace = true }
+rusqlite = { workspace = true }
 
 [build-dependencies]
 tonic-build = { workspace = true }

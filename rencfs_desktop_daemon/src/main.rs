@@ -1,3 +1,4 @@
+#[cfg(target_os = "linux")]
 extern crate daemonize;
 extern crate directories;
 
@@ -8,6 +9,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::thread;
 
+#[cfg(target_os = "linux")]
 use daemonize::Daemonize;
 use dotenvy::dotenv;
 use rencfs_desktop_common::is_debug;
@@ -40,10 +42,12 @@ async fn main() {
         // in dev mode we don't want to daemonize so we can see logs in console and have debug
         run_in_daemon().await;
     } else {
+        #[cfg(target_os = "linux")]
         daemonize();
     }
 }
 
+#[cfg(target_os = "linux")]
 #[instrument]
 fn daemonize() {
     let logs_dir = get_logs_dir();
