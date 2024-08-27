@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: install deps
-        run: apt-get install protobuf-compiler
+        run: sudo apt-get install protobuf-compiler
 
       - name: setup Rust
         run: |
