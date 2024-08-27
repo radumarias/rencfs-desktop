@@ -1,3 +1,5 @@
+cargo-features = ["profile-rustflags"]
+
 [workspace]
 
 members = [
@@ -6,6 +8,12 @@ members = [
     "rencfs_desktop_common",
 ]
 resolver = "2"
+
+[profile.release]
+panic = "abort"
+# Treat warnings as errors in release builds
+rustflags = ["-Dwarnings"]
+lto = true
 
 [workspace.package]
 edition = "2021"
@@ -30,5 +38,5 @@ serde = { version = "1.0.198" }
 serde_json = "1.0.116"
 sysinfo = "0.30.11"
 
-# build-dependencies
+[build-dependencies]
 tonic-build = "0.12.1"
