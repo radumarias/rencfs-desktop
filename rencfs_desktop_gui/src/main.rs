@@ -1,16 +1,16 @@
+use diesel::prelude::*;
+use dotenvy::dotenv;
 use std::backtrace::Backtrace;
 use std::panic;
 use std::panic::catch_unwind;
 use std::str::FromStr;
 use std::sync::Mutex;
-use diesel::prelude::*;
-use dotenvy::dotenv;
 use tracing::{error, instrument, Level};
 
+use crate::dashboard::Dashboard;
 use rencfs_desktop_common::persistence::run_migrations;
 use static_init::dynamic;
 use tokio::runtime::Runtime;
-use crate::dashboard::Dashboard;
 
 mod daemon_service {
     tonic::include_proto!("rencfs_desktop");
@@ -35,7 +35,7 @@ pub static DB_CONN: Mutex<SqliteConnection> = {
         Err(err) => eprintln!("Error loading env file: {:?}", err),
     }
     match rencfs_desktop_common::persistence::establish_connection() {
-        Ok(db) => { Mutex::new(db) }
+        Ok(db) => Mutex::new(db),
         Err(err) => {
             error!(err = %err, "Error connecting to database");
             panic!("Error connecting to database: {:?}", err);
@@ -98,8 +98,6 @@ pub fn start_ui(conn: SqliteConnection) -> Result<(), eframe::Error> {
     eframe::run_native(
         "EncryptedFS",
         options,
-        Box::new(|_cc| {
-            Ok(Box::new(Dashboard::new(conn)))
-        }),
+        Box::new(|_cc| Ok(Box::new(Dashboard::new(conn)))),
     )
 }

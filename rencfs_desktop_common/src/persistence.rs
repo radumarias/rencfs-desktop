@@ -1,20 +1,24 @@
 use std::env;
 
-use diesel::{Connection, ConnectionError, ConnectionResult, SqliteConnection};
 use diesel::connection::SimpleConnection;
 use diesel::migration::MigrationVersion;
+use diesel::{Connection, ConnectionError, ConnectionResult, SqliteConnection};
 use diesel_migrations::MigrationHarness;
 use tracing::{info, instrument};
 
-use crate::{is_debug, MIGRATIONS};
 use crate::directories::get_config_dir;
+use crate::{is_debug, MIGRATIONS};
 
 pub fn establish_connection() -> ConnectionResult<SqliteConnection> {
     let database_url: String;
     if is_debug() {
         database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     } else {
-        database_url = get_config_dir().join("rencfs_desktop.db").to_str().unwrap().to_string()
+        database_url = get_config_dir()
+            .join("rencfs_desktop.db")
+            .to_str()
+            .unwrap()
+            .to_string()
     }
 
     let mut conn = SqliteConnection::establish(&database_url)?;
@@ -31,7 +35,9 @@ pub fn establish_connection() -> ConnectionResult<SqliteConnection> {
 }
 
 #[instrument(skip(conn))]
-pub fn run_migrations(conn: &mut SqliteConnection) -> diesel::migration::Result<Vec<MigrationVersion<'_>>> {
+pub fn run_migrations(
+    conn: &mut SqliteConnection,
+) -> diesel::migration::Result<Vec<MigrationVersion<'_>>> {
     info!("Running migrations");
     conn.run_pending_migrations(MIGRATIONS)
 }

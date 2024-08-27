@@ -1,5 +1,5 @@
-use std::time::Duration;
 use egui_notify::Toast;
+use std::time::Duration;
 
 pub(crate) fn customize_toast_duration(t: &mut Toast, seconds: u64) {
     let duration = Some(Duration::from_secs(seconds));

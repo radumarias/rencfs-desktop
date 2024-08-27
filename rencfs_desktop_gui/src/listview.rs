@@ -1,13 +1,11 @@
-use egui::{
-    Align, Id, Label, Layout, Margin, RichText, Rounding, ScrollArea, Sense, TextEdit,
-};
-use std::borrow::Cow;
 use crate::listview::r#trait::ItemTrait;
+use egui::{Align, Id, Label, Layout, Margin, RichText, Rounding, ScrollArea, Sense, TextEdit};
+use std::borrow::Cow;
 
 pub mod state;
 pub mod r#trait;
 
-pub struct ListView<'a, W: ItemTrait + 'a, L: Iterator<Item=&'a W>> {
+pub struct ListView<'a, W: ItemTrait + 'a, L: Iterator<Item = &'a W>> {
     pub(crate) with_search: bool,
     pub(crate) title: Option<Cow<'a, str>>,
     pub(crate) hold_text: Option<Cow<'a, str>>,
@@ -21,7 +19,7 @@ pub struct ListView<'a, W: ItemTrait + 'a, L: Iterator<Item=&'a W>> {
     pub(crate) selected_item_id: Option<Id>,
 }
 
-impl<'a, W: ItemTrait + 'a, L: Iterator<Item=&'a W>> ListView<'a, W, L> {
+impl<'a, W: ItemTrait + 'a, L: Iterator<Item = &'a W>> ListView<'a, W, L> {
     pub fn new(items: L, data: W::Data<'a>) -> Self {
         Self {
             reset_selection: false,
@@ -39,7 +37,7 @@ impl<'a, W: ItemTrait + 'a, L: Iterator<Item=&'a W>> ListView<'a, W, L> {
     }
 }
 
-impl<'a, W: ItemTrait + 'a, L: Iterator<Item=&'a W>> ListView<'a, W, L> {
+impl<'a, W: ItemTrait + 'a, L: Iterator<Item = &'a W>> ListView<'a, W, L> {
     pub fn selected_item(mut self, id: Id) -> Self {
         self.selected_item_id = Some(id);
         self

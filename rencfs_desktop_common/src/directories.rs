@@ -1,14 +1,15 @@
-use directories::ProjectDirs;
-use tracing::{error, instrument};
-use std::{fs, panic};
-use std::path::PathBuf;
-use std::str::FromStr;
 use crate::app_details::{APPLICATION, ORGANIZATION, QUALIFIER};
 use crate::is_debug;
+use directories::ProjectDirs;
+use std::path::PathBuf;
+use std::str::FromStr;
+use std::{fs, panic};
+use tracing::{error, instrument};
 
 #[instrument]
 pub fn get_project_dirs() -> ProjectDirs {
-    let proj_dirs = if let Some(proj_dirs) = ProjectDirs::from(QUALIFIER, ORGANIZATION, APPLICATION) {
+    let proj_dirs = if let Some(proj_dirs) = ProjectDirs::from(QUALIFIER, ORGANIZATION, APPLICATION)
+    {
         proj_dirs
     } else {
         error!("Cannot get project directories");
@@ -16,7 +17,8 @@ pub fn get_project_dirs() -> ProjectDirs {
     };
     fs::create_dir_all(proj_dirs.config_dir()).expect("Cannot create config directory");
     fs::create_dir_all(proj_dirs.data_local_dir()).expect("Cannot create data directory");
-    fs::create_dir_all(proj_dirs.data_local_dir().join("logs")).expect("Cannot create logs directory");
+    fs::create_dir_all(proj_dirs.data_local_dir().join("logs"))
+        .expect("Cannot create logs directory");
 
     proj_dirs
 }
@@ -46,7 +48,11 @@ pub fn get_logs_dir() -> PathBuf {
 }
 
 fn get_dev_data_dir() -> PathBuf {
-    let path = PathBuf::from_str(&format!("/tmp/{}", APPLICATION.replace(" ", "-").to_lowercase())).unwrap();
+    let path = PathBuf::from_str(&format!(
+        "/tmp/{}",
+        APPLICATION.replace(" ", "-").to_lowercase()
+    ))
+    .unwrap();
     fs::create_dir_all(&path).expect("Cannot create data directory");
     path
 }

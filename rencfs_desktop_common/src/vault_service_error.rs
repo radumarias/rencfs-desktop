@@ -33,11 +33,15 @@ impl From<VaultServiceError> for Status {
     fn from(e: VaultServiceError) -> Self {
         let mut status = Status::internal(format!("internal error: {}", e));
 
-        status.metadata_mut().insert(CUSTOM_ERROR,
-                                     serde_json::to_string(&e)
-                                         .unwrap_or("could not serialize: {e}".to_string())
-                                         .parse()
-                                         .unwrap_or(tonic::metadata::MetadataValue::from_static("unable to create metadata value")));
+        status.metadata_mut().insert(
+            CUSTOM_ERROR,
+            serde_json::to_string(&e)
+                .unwrap_or("could not serialize: {e}".to_string())
+                .parse()
+                .unwrap_or(tonic::metadata::MetadataValue::from_static(
+                    "unable to create metadata value",
+                )),
+        );
         status
     }
 }

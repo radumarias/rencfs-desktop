@@ -10,17 +10,17 @@ use std::thread;
 
 use daemonize::Daemonize;
 use dotenvy::dotenv;
+use rencfs_desktop_common::is_debug;
 use tokio::sync::Mutex;
 use tokio::task;
-use tracing::{error, info, instrument, Level};
-use rencfs_desktop_common::is_debug;
 use tonic::transport::Server;
+use tracing::{error, info, instrument, Level};
 
-use rencfs_desktop_common::persistence::run_migrations;
 use rencfs_desktop_common::directories::{get_data_dir, get_logs_dir};
+use rencfs_desktop_common::persistence::run_migrations;
 
-use crate::vault_service::MyVaultService;
 use crate::vault_service::vault_service_server::VaultServiceServer;
+use crate::vault_service::MyVaultService;
 
 mod vault_service;
 
@@ -51,11 +51,27 @@ fn daemonize() {
     let gid = unsafe { libc::getgid() };
     let username = whoami::username();
 
-    OpenOptions::new().append(true).create(true).open(logs_dir.join("daemon.out")).unwrap();
-    OpenOptions::new().append(true).create(true).open(logs_dir.join("daemon.err")).unwrap();
+    OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open(logs_dir.join("daemon.out"))
+        .unwrap();
+    OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open(logs_dir.join("daemon.err"))
+        .unwrap();
 
-    let stdout = OpenOptions::new().write(true).append(true).open(logs_dir.join("daemon.out")).unwrap();
-    let stderr = OpenOptions::new().write(true).append(true).open(logs_dir.join("daemon.err")).unwrap();
+    let stdout = OpenOptions::new()
+        .write(true)
+        .append(true)
+        .open(logs_dir.join("daemon.out"))
+        .unwrap();
+    let stderr = OpenOptions::new()
+        .write(true)
+        .append(true)
+        .open(logs_dir.join("daemon.err"))
+        .unwrap();
 
     let daemonize = Daemonize::new()
         // .pid_file("/tmp/test.pid") // Every method except `new` and `start`
@@ -63,7 +79,7 @@ fn daemonize() {
         .working_directory(get_data_dir()) // for default behaviour.
         .user(username.as_str())
         // .group("gnome") // Group name
-        .group(gid)        // or group id.
+        .group(gid) // or group id.
         // .umask(0o600)    // Set umask, `0o027` by default.
         .stdout(stdout)
         .stderr(stderr)
@@ -104,7 +120,8 @@ pub async fn run_in_daemon() {
                 daemon_run_async().await.expect("Error running daemon");
             });
         })
-    }).await;
+    })
+    .await;
     match res {
         Ok(Ok(_)) => {}
         Ok(Err(err)) => {
@@ -122,10 +139,11 @@ pub async fn run_in_daemon() {
 
 #[instrument]
 async fn daemon_run_async() -> Result<(), Box<dyn std::error::Error>> {
-    let mut conn = rencfs_desktop_common::persistence::establish_connection().unwrap_or_else(|_| {
-        error!("Error connecting to database");
-        panic!("Error connecting to database")
-    });
+    let mut conn =
+        rencfs_desktop_common::persistence::establish_connection().unwrap_or_else(|_| {
+            error!("Error connecting to database");
+            panic!("Error connecting to database")
+        });
 
     run_migrations(&mut conn).unwrap_or_else(|_| {
         error!("Cannot run migrations");
