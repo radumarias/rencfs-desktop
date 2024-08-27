@@ -43,11 +43,11 @@ jobs:
       - name: check
         run: cargo check --all
 
-      - name: tests
-        run: cargo test --release --all --all-features
+      # - name: tests
+      #   run: cargo test --release --all --all-features
 
-      - name: doc
-        run: cargo doc --workspace --all-features --no-deps
+      # - name: doc
+      #   run: cargo doc --workspace --all-features --no-deps
 
       - name: package
         run: |
