@@ -52,3 +52,31 @@ jobs:
       - name: package
         run: |
           cargo build --release
+
+      - name: upload binary
+        if: ${{ !startsWith(matrix.runner, 'windows') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: recnfs_desktop_daemon_${{ matrix.runner }}
+          path: target/release/recnfs_desktop_daemon
+  
+      - name: upload binary
+        if: startsWith(matrix.runner, 'windows')
+        uses: actions/upload-artifact@v4
+        with:
+          name: recnfs_desktop_daemon_${{ matrix.runner }}
+          path: target/release/recnfs_desktop_daemon.exe          
+
+      - name: upload binary
+        if: ${{ !startsWith(matrix.runner, 'windows') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: recnfs_desktop_gui_${{ matrix.runner }}
+          path: target/release/recnfs_desktop_gui
+  
+      - name: upload binary
+        if: startsWith(matrix.runner, 'windows')
+        uses: actions/upload-artifact@v4
+        with:
+          name: recnfs_desktop_gui_${{ matrix.runner }}
+          path: target/release/recnfs_desktop_gui.exe
