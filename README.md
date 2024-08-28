@@ -90,11 +90,13 @@ cargo build
 Start the daemon
 
 ```bash
+cd rencfs_desktop_daemon
 cargo run --package rencfs_desktop_daemon --bin rencfs_desktop_daemon
 ```
 
 Start the GUI
 
 ```bash
+cd ../rencfs_desktop_gui
 cargo run --package rencfs_desktop_gui --bin rencfs_desktop_gui
 ```
