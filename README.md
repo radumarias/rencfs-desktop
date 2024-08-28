@@ -78,3 +78,18 @@ protoc --version  # Ensure compiler version is 3+
 ##### Install pre-compiled binaries (any OS) 
 
 https://grpc.io/docs/protoc-installation/#install-pre-compiled-binaries-any-os
+
+
+## Run
+
+Start the daemon
+
+```bash
+cargo run --package rencfs_desktop_daemon --bin rencfs_desktop_daemon
+```
+
+Start the GUI
+
+```bash
+cargo run --package rencfs_desktop_gui --bin rencfs_desktop_gui
+```
