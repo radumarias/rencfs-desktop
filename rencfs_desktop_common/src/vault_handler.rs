@@ -56,7 +56,8 @@ impl VaultHandler {
             }
         }
 
-        #[cfg(target_os = "linux")] {
+        #[cfg(target_os = "linux")]
+        {
             if self.child.is_none() {
                 info!("VaultHandler already locked");
                 return Ok(());
@@ -70,25 +71,25 @@ impl VaultHandler {
             // for some reason of we use 'kill' method the child process doesn't receive the SIGKILL signal
             // for that case we use `umount` command
             // TODO: umount for windows
-                if cfg!(any(target_os = "linux", target_os = "macos")) {
-                    let mount_point = if let Some(mount_point) = mount_point {
-                        mount_point
-                    } else {
-                        let mut guard = self.db_conn.lock().await;
-                        let mut dao = VaultDao::new(&mut *guard);
-                        match dao.get(self.id as i32) {
-                            Ok(vault) => vault.mount_point,
-                            Err(err) => {
-                                error!(%err, "Cannot get vault");
-                                return Err(VaultHandlerError::CannotLockVault.into());
-                            }
+            if cfg!(any(target_os = "linux", target_os = "macos")) {
+                let mount_point = if let Some(mount_point) = mount_point {
+                    mount_point
+                } else {
+                    let mut guard = self.db_conn.lock().await;
+                    let mut dao = VaultDao::new(&mut *guard);
+                    match dao.get(self.id as i32) {
+                        Ok(vault) => vault.mount_point,
+                        Err(err) => {
+                            error!(%err, "Cannot get vault");
+                            return Err(VaultHandlerError::CannotLockVault.into());
                         }
-                    };
-                    if let Err(_) = process::Command::new("umount").arg(&mount_point).output() {
-                        error!(mount_point, "Cannot umount");
-                        return Err(VaultHandlerError::CannotLockVault.into());
                     }
+                };
+                if let Err(_) = process::Command::new("umount").arg(&mount_point).output() {
+                    error!(mount_point, "Cannot umount");
+                    return Err(VaultHandlerError::CannotLockVault.into());
                 }
+            }
         }
 
         Ok(())
@@ -98,7 +99,8 @@ impl VaultHandler {
     pub async fn unlock(&mut self) -> Result<(), VaultHandlerError> {
         info!("");
 
-        #[cfg(target_os = "linux")] {
+        #[cfg(target_os = "linux")]
+        {
             if self.child.is_some() {
                 info!("VaultHandler already unlocked");
                 return Ok(());
