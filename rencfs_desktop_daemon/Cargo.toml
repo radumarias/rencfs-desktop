@@ -21,6 +21,7 @@ tracing-subscriber = { workspace = true }
 directories = { workspace = true }
 static_init = { workspace = true }
 thiserror = { workspace = true }
+rusqlite = { workspace = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 daemonize = "0.5.0"

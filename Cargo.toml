@@ -37,7 +37,7 @@ thiserror = "1.0.58"
 serde = { version = "1.0.198" }
 serde_json = "1.0.116"
 sysinfo = "0.30.11"
-#rusqlite = { version = "0.31", features = ["bundled"] }
+rusqlite = { version = "0.31", features = ["bundled"] }
 
 # build-dependencies
 tonic-build = "0.12.1"

@@ -19,6 +19,7 @@ tracing-subscriber = { workspace = true }
 directories = { workspace = true }
 static_init = { workspace = true }
 thiserror = { workspace = true }
+rusqlite = { workspace = true }
 
 eframe = "0.28.1"
 egui = "0.28.1"
