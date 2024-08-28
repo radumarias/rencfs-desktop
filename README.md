@@ -79,6 +79,11 @@ protoc --version  # Ensure compiler version is 3+
 
 https://grpc.io/docs/protoc-installation/#install-pre-compiled-binaries-any-os
 
+### Build
+
+```bash
+cargo build
+```
 
 ## Run
 
