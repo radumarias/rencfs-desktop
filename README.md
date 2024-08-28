@@ -28,3 +28,53 @@ If you build something interesting and feel like sharing pull requests are alway
 ## How to contribute
 
 Please see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Build project locally
+
+```bash
+git clone https://github.com/radumarias/rencfs-desktop
+```
+
+### Dependecies
+
+To use the encrypted file system, you need to have FUSE installed on your system. You can install it by running the
+following command (or based on your distribution).
+
+Arch
+
+```bash
+sudo pacman -Syu && sudo pacman -S fuse3
+```
+
+Ubuntu
+
+```bash
+sudo apt-get update && sudo apt-get -y install fuse3
+```
+
+
+#### Protocol Buffer Compiler Installation
+
+https://grpc.io/docs/protoc-installation/
+
+##### Linux
+
+Using apt or apt-get, for example
+
+```bash
+apt install -y protobuf-compiler
+protoc --version  # Ensure compiler version is 3+
+```
+
+##### MacOS
+
+Using Homebrew
+
+```bash
+brew install protobuf
+protoc --version  # Ensure compiler version is 3+
+```
+
+##### Install pre-compiled binaries (any OS) 
+
+https://grpc.io/docs/protoc-installation/#install-pre-compiled-binaries-any-os
