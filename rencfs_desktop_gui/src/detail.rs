@@ -115,7 +115,7 @@ impl eframe::App for ViewGroupDetail {
                             }).clicked() {
                                 if self.locked {
                                     self.daemon_service.unlock_vault();
-                                    customize_toast_duration(self.toasts.warning("please wait, it takes up to 10 seconds to unlock the vault, you will be notified"), 8);
+                                    // customize_toast_duration(self.toasts.warning("please wait, it takes up to 10 seconds to unlock the vault, you will be notified"), 8);
                                 } else {
                                     self.daemon_service.lock_vault();
                                 }
