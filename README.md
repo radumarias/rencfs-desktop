@@ -87,16 +87,16 @@ cargo build
 
 ## Run
 
-Start the daemon
+Start the daemon in one terminal
 
 ```bash
 cd rencfs_desktop_daemon
 cargo run --package rencfs_desktop_daemon --bin rencfs_desktop_daemon
 ```
 
-Start the GUI
+Start the GUI in another terminal
 
 ```bash
-cd ../rencfs_desktop_gui
+cd rencfs_desktop_gui
 cargo run --package rencfs_desktop_gui --bin rencfs_desktop_gui
 ```
