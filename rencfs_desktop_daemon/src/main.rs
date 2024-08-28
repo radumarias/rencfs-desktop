@@ -39,11 +39,13 @@ async fn main() {
         let log_level = Level::from_str("DEBUG").unwrap();
         let _log_guard = rencfs_desktop_common::log_init(log_level, "daemon");
 
-        // in dev mode we don't want to daemonize so we can see logs in console and have debug
+        // in dev mode, we don't want to daemonize, so we can see logs in the console and have debug
         run_in_daemon().await;
     } else {
-        #[cfg(target_os = "linux")]
-        daemonize();
+        // todo: daemonize after we can do this on windows also
+        // #[cfg(target_os = "linux")]
+        // daemonize();
+        run_in_daemon().await;
     }
 }
 
