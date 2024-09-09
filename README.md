@@ -1,6 +1,6 @@
 # rencfs-desktop
 
-GUI for [rencfs](https://github.com/radumarias/rencfs).
+GUI written in Rust with [egui](https://crates.io/crates/egui) for [rencfs](https://github.com/radumarias/rencfs).
 
 > [!WARNING]  
 > **This is still under development. Please do not use it with sensitive data for now, please wait for a
