@@ -2,10 +2,10 @@
 
 GUI for [rencfs](https://github.com/radumarias/rencfs).
 
-> [!WARNING]
-> **This is very early in development. Please do not use it with sensitive data just yet. Please wait for a
-stable release.
-> It's mostly ideal for experimental and learning projects.**
+> [!WARNING]  
+> **This is still under development. Please do not use it with sensitive data for now, please wait for a
+stable release.  
+> It's mostly ideal for experimental and learning projects. It serves as a reference app for a GUI for `rencfs`**
 
 Currently is working only on Linux, with plans to support macOS and Windows, Android and iOS in the future.
 
