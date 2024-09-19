@@ -1,4 +1,4 @@
-# rencfs-desktop
+# CipherShell
 
 GUI written in Rust with [egui](https://crates.io/crates/egui) for [rencfs](https://github.com/radumarias/rencfs).
 
