@@ -7,7 +7,7 @@ GUI written in Rust with [egui](https://crates.io/crates/egui) for [rencfs](http
 stable release.  
 > It's mostly ideal for experimental and learning projects. It serves as a reference app for a GUI for `rencfs`.**
 
-Currently is working only on Linux, with plans to support macOS and Windows, Android and iOS in the future.
+Currently, it is working only on Linux, with plans to support macOS and Windows, Android and iOS in the future. Check out [rencfs-kotlin](https://github.com/radumarias/rencfs-kotlin) for the Kotlin Multiplatform app that is build ready for desktop operating systems and Android.
 
 It uses:
 - [egui](https://crates.io/crates/egui) with [eframe](https://crates.io/crates/eframe) for GUI
@@ -35,7 +35,7 @@ Please see [CONTRIBUTING.md](CONTRIBUTING.md).
 git clone https://github.com/radumarias/rencfs-desktop
 ```
 
-### Dependecies
+### Dependencies
 
 To use the encrypted file system, you need to have FUSE installed on your system. You can install it by running the
 following command (or based on your distribution).
