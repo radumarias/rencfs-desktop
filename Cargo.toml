@@ -23,7 +23,7 @@ exclude = [".github/"]
 diesel = { version = "2.1.5", features = ["sqlite"] }
 diesel_migrations = "2.1.0"
 dotenvy = "0.15.7"
-tonic = "0.12.1"
+tonic = "0.12.3"
 tonic-types = "0.12.1"
 tonic-health = "0.12.1"
 prost = "0.13.1"
