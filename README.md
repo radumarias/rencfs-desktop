@@ -1,4 +1,4 @@
-# [![](favicon.png)](https://github.com/radumarias/rencfs-desktop) CipherShell
+# [![](favicon.png)](https://github.com/radumarias/rencfs-desktop) rencfs-desktop
 
 GUI written in Rust with [egui](https://crates.io/crates/egui) for [rencfs](https://github.com/radumarias/rencfs).
 
