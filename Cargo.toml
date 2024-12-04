@@ -10,7 +10,7 @@ members = [
 resolver = "2"
 
 [profile.release]
-# panic = "abort"
+panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
 # Treat warnings as errors in release builds
 rustflags = ["-Dwarnings"]
 lto = true
