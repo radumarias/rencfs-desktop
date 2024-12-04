@@ -2,7 +2,6 @@ use std::borrow::Cow;
 use std::sync;
 use std::sync::RwLock;
 
-use diesel::SqliteConnection;
 use eframe::egui;
 use eframe::egui::{
     CentralPanel, Color32, Context, FontId, Margin, RichText, SidePanel, TopBottomPanel,
@@ -17,7 +16,7 @@ use crate::detail::ViewGroupDetail;
 use crate::listview::r#trait::ItemTrait;
 use crate::listview::state::State;
 use crate::util::customize_toast;
-use crate::ListView;
+use crate::{DB_CONN, ListView};
 
 static CURRENT_VAULT_ITEM: RwLock<Option<Item>> = RwLock::new(None);
 static CURRENT_VAULT_ID: RwLock<Option<i32>> = RwLock::new(None);
@@ -99,7 +98,6 @@ impl ItemTrait for Item {
 }
 
 pub(crate) struct Dashboard {
-    conn: SqliteConnection,
     pub(crate) items: Vec<Item>,
     pub(crate) state: Option<State>,
     prev_state: Option<State>,
@@ -111,10 +109,9 @@ pub(crate) struct Dashboard {
 }
 
 impl Dashboard {
-    pub(crate) fn new(conn: SqliteConnection) -> Self {
+    pub(crate) fn new() -> Self {
         let (tx, rx) = sync::mpsc::channel::<UiReply>();
         let mut out = Self {
-            conn,
             items: vec![],
             state: None,
             prev_state: None,
@@ -132,7 +129,9 @@ impl Dashboard {
     }
 
     fn load_items(&mut self) -> Vec<Item> {
-        let mut dao = VaultDao::new(&mut self.conn);
+        let binding = DB_CONN.get().unwrap();
+        let mut conn = binding.lock().unwrap();
+        let mut dao = VaultDao::new(&mut conn);
         dao.get_all(None)
             .unwrap()
             .iter()

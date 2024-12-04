@@ -6,7 +6,7 @@ use diesel::{Connection, ConnectionError, ConnectionResult, SqliteConnection};
 use diesel_migrations::MigrationHarness;
 use tracing::{info, instrument};
 
-use crate::directories::get_config_dir;
+use crate::directories::get_data_dir;
 use crate::{is_debug, MIGRATIONS};
 
 pub fn establish_connection() -> ConnectionResult<SqliteConnection> {
@@ -14,7 +14,7 @@ pub fn establish_connection() -> ConnectionResult<SqliteConnection> {
     if is_debug() {
         database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     } else {
-        database_url = get_config_dir()
+        database_url = get_data_dir()
             .join("rencfs_desktop.db")
             .to_str()
             .unwrap()

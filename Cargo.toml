@@ -10,9 +10,9 @@ members = [
 resolver = "2"
 
 [profile.release]
-panic = "abort"
+# panic = "abort"
 # Treat warnings as errors in release builds
-# rustflags = ["-Dwarnings"]
+ rustflags = ["-Dwarnings"]
 lto = true
 
 [workspace.package]
@@ -20,7 +20,7 @@ edition = "2021"
 exclude = [".github/"]
 
 [workspace.dependencies]
-diesel = { version = "2.1.5", features = ["sqlite"] }
+diesel = { version = "2.2.3", features = ["sqlite"] }
 diesel_migrations = "2.1.0"
 dotenvy = "0.15.7"
 tonic = "0.12.3"
@@ -33,11 +33,12 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-appender = "0.2.3"
 directories = "5.0.1"
 static_init = "1.0.3"
-thiserror = "1.0.58"
+thiserror = "2.0.4"
 serde = { version = "1.0.198" }
 serde_json = "1.0.116"
-sysinfo = "0.30.11"
-rusqlite = { version = "0.31", features = ["bundled"] }
+sysinfo = "0.32.1"
+rusqlite = { version = "0.32.1", features = ["bundled"] }
+anyhow = "1.0.82"
 
 # build-dependencies
 tonic-build = "0.12.1"

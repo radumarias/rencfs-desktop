@@ -2,3 +2,4 @@
 /rencfs_desktop.db
 /rencfs_desktop.db-shm
 /rencfs_desktop.db-wal
+/.env

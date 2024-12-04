@@ -164,7 +164,6 @@ async fn daemon_run_async() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("Listening on {}", addr);
     Server::builder()
-        // GrpcWeb is over http1 so we must enable it.
         .add_service(service)
         .serve(addr)
         .await?;

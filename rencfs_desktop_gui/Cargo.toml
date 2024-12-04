@@ -20,11 +20,13 @@ directories = { workspace = true }
 static_init = { workspace = true }
 thiserror = { workspace = true }
 rusqlite = { workspace = true }
+anyhow = { workspace = true }
 
-eframe = "0.28.1"
-egui = "0.28.1"
-rfd = "0.14.1"
-egui-notify = "0.15.0"
+eframe = "0.29.1"
+egui = "0.29.1"
+rfd = "0.15.1"
+egui-notify = "0.17.0"
+
 
 [build-dependencies]
 tonic-build = { workspace = true }

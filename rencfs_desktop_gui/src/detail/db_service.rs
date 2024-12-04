@@ -19,8 +19,9 @@ impl DbService {
     }
 
     pub(super) fn delete(&self) -> QueryResult<()> {
-        let mut lock = DB_CONN.lock().unwrap();
-        let mut dao = VaultDao::new(&mut lock);
+        let binding = DB_CONN.get().unwrap();
+        let mut conn = binding.lock().unwrap();
+        let mut dao = VaultDao::new(&mut conn);
         dao.delete(self.id.as_ref().unwrap().clone())
     }
 
@@ -29,21 +30,24 @@ impl DbService {
         V: AsChangeset<Target = vaults>,
         <V as AsChangeset>::Changeset: QueryFragment<Sqlite>,
     {
-        let mut lock = DB_CONN.lock().unwrap();
-        let mut dao = VaultDao::new(&mut lock);
+        let binding = DB_CONN.get().unwrap();
+        let mut conn = binding.lock().unwrap();
+        let mut dao = VaultDao::new(&mut conn);
         dao.update(self.id.as_ref().unwrap().clone(), v).unwrap();
         self.tx_parent.send(UiReply::VaultUpdated(false)).unwrap();
     }
 
     pub(super) fn get_vault(&self) -> QueryResult<Vault> {
-        let mut lock = DB_CONN.lock().unwrap();
-        let mut dao = VaultDao::new(&mut lock);
+        let binding = DB_CONN.get().unwrap();
+        let mut conn = binding.lock().unwrap();
+        let mut dao = VaultDao::new(&mut conn);
         dao.get(self.id.as_ref().unwrap().clone())
     }
 
     pub(super) fn insert(&mut self, new_vault: NewVault) -> QueryResult<()> {
-        let mut lock = DB_CONN.lock().unwrap();
-        let mut dao = VaultDao::new(&mut lock);
+        let binding = DB_CONN.get().unwrap();
+        let mut conn = binding.lock().unwrap();
+        let mut dao = VaultDao::new(&mut conn);
         dao.insert(&new_vault)
     }
 }
