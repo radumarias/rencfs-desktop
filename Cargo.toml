@@ -1,4 +1,4 @@
-#cargo-features = ["profile-rustflags"]
+cargo-features = ["profile-rustflags"]
 
 [workspace]
 
@@ -12,7 +12,7 @@ resolver = "2"
 [profile.release]
 # panic = "abort"
 # Treat warnings as errors in release builds
- rustflags = ["-Dwarnings"]
+rustflags = ["-Dwarnings"]
 lto = true
 
 [workspace.package]

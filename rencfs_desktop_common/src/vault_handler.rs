@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use diesel::{QueryResult, SqliteConnection};
 use serde::{Deserialize, Serialize};
-use sysinfo::{Pid, ProcessStatus, System};
+use sysinfo::{Pid, ProcessesToUpdate, ProcessStatus, System};
 use thiserror::Error;
 use tokio::process::{Child, Command};
 use tokio::sync::Mutex;
@@ -159,7 +159,7 @@ impl VaultHandler {
                 return Err(VaultHandlerError::CannotUnlockVault.into());
             }
             let mut sys = System::new();
-            sys.refresh_processes();
+            sys.refresh_processes(ProcessesToUpdate::All, false);
             let mut is_defunct = false;
             match sys.process(Pid::from_u32(child.id().unwrap())) {
                 Some(process) => {
